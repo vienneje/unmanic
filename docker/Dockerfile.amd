@@ -1,0 +1,51 @@
+FROM josh5/unmanic:latest
+
+LABEL maintainer="viennej <viennej@github.com>"
+LABEL description="Unmanic with enhanced AMD hardware acceleration support"
+
+# Install additional AMD packages and LLVM 21
+RUN \
+    echo "**** Add LLVM repository for bleeding-edge version ****" \
+        && wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --output /usr/share/keyrings/llvm-snapshot.gpg \
+        && echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] https://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main" | tee /etc/apt/sources.list.d/llvm.list \
+    && \
+    echo "**** Install bleeding-edge LLVM 21 and additional AMD utilities ****" \
+        && apt-get update \
+        && apt-get install -y \
+            llvm-21 \
+            libllvm21 \
+            radeontop \
+            mesa-utils \
+            clinfo \
+            mesa-vulkan-drivers \
+            libdrm-amdgpu1 \
+    && \
+    echo "**** Set AMD-specific environment variables ****" \
+        && echo "export RADV_PERFTEST=1" >> /etc/environment \
+        && echo "export AMD_VULKAN_ICD=RADV" >> /etc/environment \
+        && echo "export LLVM_VERSION=21" >> /etc/environment \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/*
+
+# Copy our enhanced AMD codec files
+COPY unmanic/libs/unffmpeg/video_codecs/av1.py /app/unmanic/libs/unffmpeg/video_codecs/av1.py
+COPY unmanic/libs/unffmpeg/video_codecs/vp9.py /app/unmanic/libs/unffmpeg/video_codecs/vp9.py
+COPY unmanic/libs/unffmpeg/hardware_acceleration_handle.py /app/unmanic/libs/unffmpeg/hardware_acceleration_handle.py
+COPY unmanic/libs/unffmpeg/video_codecs/h264.py /app/unmanic/libs/unffmpeg/video_codecs/h264.py
+COPY unmanic/libs/unffmpeg/video_codecs/hevc.py /app/unmanic/libs/unffmpeg/video_codecs/hevc.py
+COPY unmanic/libs/system.py /app/unmanic/libs/system.py
+
+# Set working directory
+WORKDIR /app
+
+# Expose port
+EXPOSE 8888
+
+# Set entrypoint
+ENTRYPOINT ["/init"]
