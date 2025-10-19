@@ -1,0 +1,24 @@
+version: '2.4'
+
+services:
+  unmanic:
+    container_name: unmanic
+    image: josh5/unmanic:latest
+    ports:
+      - 8888:8888
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      # AMD-specific environment variables
+      - RADV_PERFTEST=1
+      - AMD_VULKAN_ICD=RADV
+      - LIBVA_DRIVERS_PATH=/usr/lib/x86_64-linux-gnu/dri
+    volumes:
+      - /home/shidosh/.config/unmanic:/config
+      - /home/shidosh/Vidéos:/library
+      - /home/shidosh/Public:/tmp/unmanic
+    devices:
+      # For AMD GPU hardware acceleration using VAAPI
+      - /dev/dri:/dev/dri
+    restart: unless-stopped

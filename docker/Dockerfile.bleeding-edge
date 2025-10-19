@@ -1,0 +1,153 @@
+FROM lsiobase/ubuntu:noble
+
+LABEL maintainer="Josh.5 <jsunnex@gmail.com>"
+
+ENV \
+    LIBVA_DRIVERS_PATH="/usr/lib/x86_64-linux-gnu/dri" \
+    NVIDIA_DRIVER_CAPABILITIES="compute,video,utility" \
+    NVIDIA_VISIBLE_DEVICES="all"
+
+RUN \
+    echo "**** Install build dependencies requirements ****" \
+        && apt-get update \
+        && apt-get install -y \
+            ca-certificates \
+            curl \
+            gnupg \
+            wget \
+    && \
+    echo "**** Install runtime packages ****" \
+        && apt-get install -y \
+            libexpat1 \
+            libglib2.0-0 \
+            libgomp1 \
+            libharfbuzz0b \
+            libmediainfo0v5 \
+            libv4l-0 \
+            libx11-6 \
+            libxcb1 \
+            libxext6 \
+            libxml2 \
+    && \
+    echo "**** Install all available media acceleration packages ****" \
+        && apt-get install -y \
+            va-driver-all \
+            mesa-vulkan-drivers \
+            libdrm-amdgpu1 \
+            libdrm2 \
+            libva2 \
+            libva-drm2 \
+    && \
+    echo "**** Install arch specific packages for $(uname -m) ****" \
+        && sleep 2 \
+        && \
+        if uname -m | grep -q x86; then \
+            echo "**** Add Intel Graphics repository ****" \
+                && wget -qO - https://repositories.intel.com/gpu/intel-graphics.key | gpg --dearmor --output /usr/share/keyrings/intel-graphics.gpg \
+                && echo "deb [arch=amd64,i386 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble client" | tee /etc/apt/sources.list.d/intel-gpu-noble.list \
+            && \
+            echo "**** Install Intel Media Drivers ****" \
+                && apt-get update \
+                && apt-get install -y \
+                    intel-media-va-driver-non-free \
+                    libigdgmm12 \
+                    libmfx1 \
+                    libmfxgen1 \
+                    libva-drm2 \
+                    libva2 \
+                    libvpl2 \
+            && \
+            echo ; \
+        fi \
+    && \
+    echo "**** Install AMD-specific packages for $(uname -m) ****" \
+        && sleep 2 \
+        && \
+        if uname -m | grep -q x86; then \
+            echo "**** Add LLVM repository for bleeding-edge version ****" \
+                && wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor --output /usr/share/keyrings/llvm-snapshot.gpg \
+                && echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] https://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | tee /etc/apt/sources.list.d/llvm.list \
+            && \
+            echo "**** Install bleeding-edge LLVM 21 and AMD GPU utilities ****" \
+                && apt-get update \
+                && apt-get install -y \
+                    llvm-21 \
+                    libllvm21 \
+                    radeontop \
+                    mesa-utils \
+                    clinfo \
+            && \
+            echo "**** Set AMD-specific environment variables ****" \
+                && echo "export RADV_PERFTEST=1" >> /etc/environment \
+                && echo "export AMD_VULKAN_ICD=RADV" >> /etc/environment \
+                && echo "export LLVM_VERSION=21" >> /etc/environment \
+            && \
+            echo ; \
+        fi \
+    && \
+    echo "**** Install hardware info tools packages ****" \
+        && apt-get install -y \
+            hwinfo \
+            vainfo \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/*
+
+# Copy local files
+COPY root/ /
+
+# Install Jellyfin FFmpeg
+ARG JELLYFIN_FFMPEG_VERSION="7"
+RUN \
+    echo "**** Install Jellyfin FFmpeg ${JELLYFIN_FFMPEG_VERSION} ****" \
+        && curl -L https://repo.jellyfin.org/ubuntu/jellyfin_ffmpeg/install-jellyfin-ffmpeg_${JELLYFIN_FFMPEG_VERSION}.sh | bash \
+        && apt-get update \
+        && apt-get install -y \
+            jellyfin-ffmpeg${JELLYFIN_FFMPEG_VERSION} \
+    && \
+    echo "**** Create symlinks for Jellyfin FFmpeg ****" \
+        && ln -sf /usr/lib/jellyfin-ffmpeg/ffmpeg /usr/local/bin/ffmpeg \
+        && ln -sf /usr/lib/jellyfin-ffmpeg/ffprobe /usr/local/bin/ffprobe \
+    && \
+    echo "**** Verify FFmpeg installation ****" \
+        && ffmpeg -version | head -1 \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/*
+
+# Ports and volumes
+EXPOSE 8888
+VOLUME /config /library /tmp/unmanic
+
+# Add s6-overlay
+ARG S6_OVERLAY_VERSION="3.1.6.2"
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+
+# Add unmanic
+COPY --from=josh5/unmanic:latest /app/unmanic /app/unmanic
+
+# Add unmanic service
+COPY root/etc/services.d/unmanic /etc/services.d/unmanic
+
+# Set working directory
+WORKDIR /app
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8888/ || exit 1
+
+# Set s6-overlay entrypoint
+ENTRYPOINT ["/init"]
