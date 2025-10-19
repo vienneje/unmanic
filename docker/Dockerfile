@@ -80,6 +80,23 @@ RUN \
             echo ; \
         fi \
     && \
+    echo "**** Install AMD-specific packages for $(uname -m) ****" \
+        && sleep 2 \
+        && \
+        if uname -m | grep -q x86; then \
+            echo "**** Install AMD GPU monitoring and utilities ****" \
+                && apt-get install -y \
+                    radeontop \
+                    mesa-utils \
+                    clinfo \
+            && \
+            echo "**** Set AMD-specific environment variables ****" \
+                && echo "export RADV_PERFTEST=1" >> /etc/environment \
+                && echo "export AMD_VULKAN_ICD=RADV" >> /etc/environment \
+            && \
+            echo ; \
+        fi \
+    && \
     echo "**** Install hardware info tools packages ****" \
         # hwinfo:
         #   A hardware identification system that provides detailed information about all the hardware components of a computer.

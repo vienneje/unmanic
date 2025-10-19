@@ -24,8 +24,11 @@ Once you have a Docker image, you can run it using the scripts in the `../devops
 
 Examples:
 ```
-# Enable VAAPI
+# Enable VAAPI (Intel/AMD)
 devops/run_docker.sh --debug --hw=vaapi --cpus=1
+
+# Enable AMD GPU specifically
+devops/run_docker.sh --debug --hw=amd --cpus=1
 
 # Enable NVIDIA
 devops/run_docker.sh --debug --hw=nvidia --cpus=1
@@ -97,6 +100,94 @@ devops/frontend_install.sh
 
 This will install the NPM modules and build the frontend package. The end result will be located in `unmanic/webserver/public`
 
+
+
+## Hardware Acceleration Support
+
+Unmanic supports hardware-accelerated video encoding and decoding through multiple GPU vendors:
+
+### Supported Hardware Acceleration APIs
+
+| Vendor | API | Decoding | Encoding | Notes |
+|--------|-----|----------|----------|-------|
+| **AMD** | VAAPI | ✅ H.264, HEVC, VP8, VP9, AV1 | ✅ H.264, HEVC, AV1, VP9 | Uses Mesa VAAPI drivers |
+| **AMD** | AMF | ❌ | ✅ H.264, HEVC, AV1 | AMD proprietary API (Windows/Linux) |
+| **Intel** | VAAPI | ✅ H.264, HEVC, VP8, VP9, AV1 | ✅ H.264, HEVC, AV1, VP9 | Intel Media Driver |
+| **NVIDIA** | CUDA/NVENC | ✅ H.264, HEVC, VP8, VP9, AV1 | ✅ H.264, HEVC, AV1 | Proprietary drivers |
+
+### AMD GPU Setup
+
+#### Requirements
+- AMD GPU with hardware video encoding support (GCN 2.0+ or RDNA)
+- Mesa VAAPI drivers (`mesa-va-drivers`)
+- Linux kernel with AMD GPU driver (`amdgpu`)
+
+#### Docker Setup
+Use the AMD-specific Docker Compose template:
+```bash
+# Copy the AMD template
+cp docker/docker-compose-amd.yml docker-compose.yml
+
+# Edit docker-compose.yml with your paths and run
+docker-compose up -d
+```
+
+#### Development Setup
+```bash
+# For AMD GPU development
+devops/run_docker.sh --debug --hw=amd --cpus=1
+```
+
+#### Troubleshooting AMD VAAPI
+
+1. **Check GPU detection:**
+   ```bash
+   # Inside container
+   vainfo
+   ```
+
+2. **Verify device permissions:**
+   ```bash
+   # On host
+   ls -la /dev/dri/
+   # Should show renderD* devices with proper permissions
+   ```
+
+3. **Check driver installation:**
+   ```bash
+   # Inside container
+   lspci | grep VGA
+   # Should show AMD GPU
+   ```
+
+4. **Test encoding:**
+   ```bash
+   # Inside container
+   ffmpeg -f lavfi -i testsrc=duration=10:size=1920x1080:rate=30 -c:v hevc_vaapi -f null -
+   ```
+
+### Performance Tuning
+
+#### AMD GPU Optimizations
+- Use `RADV_PERFTEST=1` environment variable for performance testing
+- Set `AMD_VULKAN_ICD=RADV` for Vulkan applications
+- Monitor GPU usage with `radeontop`
+
+#### Encoder Selection Priority
+1. **AMD VAAPI**: Best compatibility, works across all AMD GPUs
+2. **AMD AMF**: Better performance on newer GPUs, Windows/Linux only
+3. **Software**: Fallback for unsupported formats
+
+### Hardware Acceleration Detection
+
+Unmanic automatically detects available hardware acceleration devices and their capabilities. The system information API (`/api/v2/settings/system/configuration`) provides detailed GPU information including:
+
+- Vendor identification (AMD, Intel, NVIDIA)
+- Device model and driver information
+- Supported codecs and formats
+- Hardware acceleration capabilities
+
+This information is used to automatically configure the best available encoder for your hardware.
 
 
 ## Database upgrades

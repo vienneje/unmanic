@@ -12,12 +12,18 @@ CONTAINER_EXT="mkv"
 #   - h264_nvenc
 #   - h264_vaapi
 #   - hevc_vaapi
+#   - h264_amf (AMD AMF)
+#   - hevc_amf (AMD AMF)
+#   - av1_vaapi
+#   - vp9_vaapi
 V_ENCODER="hevc_vaapi"
 # Additional encoder args
 #   EG:
 #       -b:v 5M
 #       -b:v 1M -maxrate 2M -bufsize 4M -preset slow
 #       -vf 'format=nv12|vaapi,hwupload'
+#       -vf 'format=nv12|vaapi,hwupload' (AMD VAAPI)
+#       -quality quality (AMD AMF)
 V_ENCODER_ARGS="-b:v 4M -vaapi_device /dev/dri/renderD128 -vf 'format=nv12|vaapi,hwupload' "
 
 

@@ -52,7 +52,7 @@ Options:
     --help, -h                  Show this help message and exit
     --debug                     Enable debug mode inside container
     --use-test-support-api      Set USE_TEST_SUPPORT_API=true inside container
-    --hw=<nvidia|vaapi>         Enable hardware acceleration
+    --hw=<nvidia|vaapi|amd>         Enable hardware acceleration
     --cpus=<value>              Limit container CPUs (e.g. "2.5")
     --memory=<value>            Limit container memory (e.g. "4g")
     --cache=<path>              Override cache directory (default: $CACHE_PATH)
@@ -108,6 +108,11 @@ if [[ -n $HW ]]; then
         ;;
     vaapi)
         DOCKER_PARAMS+=(--device /dev/dri:/dev/dri)
+        ;;
+    amd)
+        DOCKER_PARAMS+=(--device /dev/dri:/dev/dri)
+        DOCKER_PARAMS+=(-e RADV_PERFTEST=1)
+        DOCKER_PARAMS+=(-e AMD_VULKAN_ICD=RADV)
         ;;
     *)
         echo "Unsupported --hw=$HW" >&2

@@ -104,6 +104,10 @@ class HardwareAccelerationHandle(object):
 
         :return:
         """
+        # Check if this is an AMD device and use AMD-specific optimizations
+        if self.hardware_device and self.hardware_device.get('vendor') == 'AMD':
+            return self.generate_amd_vaapi_main_args()
+        
         # Check if we are using a VAAPI encoder also...
         if self.video_encoder and "vaapi" in self.video_encoder.lower():
             if self.enable_hardware_accelerated_decoding:
@@ -135,6 +139,43 @@ class HardwareAccelerationHandle(object):
         else:
             # Decode an input with hardware if possible, output in normal memory to encode with another encoder not vaapi:
             #   REF: https://trac.ffmpeg.org/wiki/Hardware/VAAPI#Decode-only
+            self.main_options = [
+                "-hwaccel", "vaapi",
+                "-hwaccel_device", self.hardware_device.get('hwaccel_device')
+            ]
+
+    def generate_amd_vaapi_main_args(self):
+        """
+        Generate AMD-specific VAAPI arguments with optimizations for AMD GPUs
+        
+        :return:
+        """
+        # Check if we are using a VAAPI encoder also...
+        if self.video_encoder and "vaapi" in self.video_encoder.lower():
+            if self.enable_hardware_accelerated_decoding:
+                # AMD-optimized encoding with hardware decoding
+                self.main_options = [
+                    "-init_hw_device", "vaapi=vaapi0:{}".format(self.hardware_device.get('hwaccel_device')),
+                    "-hwaccel", "vaapi",
+                    "-hwaccel_output_format", "vaapi",
+                    "-hwaccel_device", "vaapi0",
+                ]
+                # AMD GPUs support both NV12 and P010 formats
+                # Use P010 for 10-bit content when available, fallback to NV12
+                self.advanced_options = [
+                    "-filter_hw_device", "vaapi0",
+                    "-vf", "format=nv12|vaapi,hwupload",
+                ]
+            else:
+                # AMD encode-only mode
+                self.main_options = [
+                    "-vaapi_device", self.hardware_device.get('hwaccel_device'),
+                ]
+                self.advanced_options = [
+                    "-vf", "format=nv12|vaapi,hwupload",
+                ]
+        else:
+            # AMD decode-only mode
             self.main_options = [
                 "-hwaccel", "vaapi",
                 "-hwaccel_device", self.hardware_device.get('hwaccel_device')
@@ -195,7 +236,7 @@ class HardwareAccelerationHandle(object):
 
     def list_available_vaapi_devices(self):
         """
-        Return a list of available VAAPI decoder devices
+        Return a list of available VAAPI decoder devices with vendor identification
 
         :return:
         """
@@ -205,14 +246,118 @@ class HardwareAccelerationHandle(object):
         if os.path.exists(dir_path):
             for device in sorted(os.listdir(dir_path)):
                 if device.startswith('render'):
+                    device_path = os.path.join("/", "dev", "dri", device)
+                    device_info = self.identify_vaapi_device_vendor(device_path)
+                    
                     device_data = {
                         'hwaccel':        'vaapi',
-                        'hwaccel_device': os.path.join("/", "dev", "dri", device),
+                        'hwaccel_device': device_path,
+                        'vendor':         device_info.get('vendor', 'unknown'),
+                        'model':          device_info.get('model', 'unknown'),
+                        'driver':         device_info.get('driver', 'unknown'),
+                        'device_name':    device_info.get('device_name', device),
                     }
                     decoders.append(device_data)
 
         # Return the list of decoders
         return decoders
+
+    def identify_vaapi_device_vendor(self, device_path):
+        """
+        Identify the vendor and model of a VAAPI device by examining sysfs
+        
+        :param device_path: Path to the DRM device (e.g., /dev/dri/renderD128)
+        :return: Dictionary with vendor, model, driver, and device_name
+        """
+        device_info = {
+            'vendor': 'unknown',
+            'model': 'unknown', 
+            'driver': 'unknown',
+            'device_name': os.path.basename(device_path)
+        }
+        
+        try:
+            # First, try to find the corresponding card device by checking all available cards
+            # since render device numbers don't always match card numbers
+            drm_dir = os.path.join("/", "sys", "class", "drm")
+            sysfs_path = None
+            
+            if os.path.exists(drm_dir):
+                # Look for all card devices
+                for item in os.listdir(drm_dir):
+                    if item.startswith('card') and not '-' in item:  # Skip display outputs
+                        card_path = os.path.join(drm_dir, item)
+                        if os.path.isdir(card_path):
+                            # Check if this card has a render device that matches our path
+                            # The render device might be in the device/drm subdirectory
+                            device_drm_path = os.path.join(card_path, "device", "drm", os.path.basename(device_path))
+                            if os.path.exists(device_drm_path):
+                                # Found the matching card, now read its information
+                                sysfs_path = card_path
+                                break
+                
+                # Fallback: try the original logic with device number
+                if not sysfs_path:
+                    device_name = os.path.basename(device_path)
+                    if device_name.startswith('renderD'):
+                        device_num = device_name[7:]  # Remove 'renderD' prefix
+                        sysfs_path = os.path.join("/", "sys", "class", "drm", f"card{device_num}")
+                
+                if sysfs_path and os.path.exists(sysfs_path):
+                    # Read vendor information
+                    vendor_file = os.path.join(sysfs_path, "device", "vendor")
+                    if os.path.exists(vendor_file):
+                        with open(vendor_file, 'r') as f:
+                            vendor_id = f.read().strip()
+                            # Convert vendor ID to name
+                            vendor_map = {
+                                '0x1002': 'AMD',      # AMD/ATI
+                                '0x8086': 'Intel',    # Intel
+                                '0x10de': 'NVIDIA',   # NVIDIA
+                            }
+                            device_info['vendor'] = vendor_map.get(vendor_id, f'Unknown ({vendor_id})')
+                    
+                    # Read device information
+                    device_file = os.path.join(sysfs_path, "device", "device")
+                    if os.path.exists(device_file):
+                        with open(device_file, 'r') as f:
+                            device_id = f.read().strip()
+                            device_info['model'] = f'Device {device_id}'
+                    
+                    # Read driver information
+                    driver_link = os.path.join(sysfs_path, "device", "driver")
+                    if os.path.exists(driver_link):
+                        driver_path = os.readlink(driver_link)
+                        driver_name = os.path.basename(driver_path)
+                        device_info['driver'] = driver_name
+                        
+                        # Map driver names to more readable names
+                        driver_map = {
+                            'amdgpu': 'AMD GPU Driver',
+                            'i915': 'Intel Graphics Driver',
+                            'nouveau': 'Nouveau (NVIDIA Open Source)',
+                            'nvidia': 'NVIDIA Proprietary Driver',
+                        }
+                        device_info['driver'] = driver_map.get(driver_name, driver_name)
+                    
+                    # Try to get more specific model information from modalias
+                    modalias_file = os.path.join(sysfs_path, "device", "modalias")
+                    if os.path.exists(modalias_file):
+                        with open(modalias_file, 'r') as f:
+                            modalias = f.read().strip()
+                            # Parse modalias for more specific model info
+                            if 'amd' in modalias.lower():
+                                device_info['vendor'] = 'AMD'
+                            elif 'intel' in modalias.lower():
+                                device_info['vendor'] = 'Intel'
+                            elif 'nvidia' in modalias.lower():
+                                device_info['vendor'] = 'NVIDIA'
+                                
+        except (OSError, IOError, ValueError) as e:
+            # If we can't read sysfs, just use defaults
+            pass
+            
+        return device_info
 
 
 if __name__ == "__main__":
