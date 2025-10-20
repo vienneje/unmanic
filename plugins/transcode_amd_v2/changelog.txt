@@ -1,3 +1,9 @@
+2.1.7:
+- Removed custom progress parser to use Unmanic's built-in FFmpeg handler
+- Unmanic's default progress detection provides better percentage and ETC
+- Fixes missing progress bar and ETC in UI
+- Simpler and more reliable progress tracking
+
 2.1.6:
 - Fixed: Progress parser returning None instead of empty dict
 - Resolves "'NoneType' object has no attribute 'get'" error
