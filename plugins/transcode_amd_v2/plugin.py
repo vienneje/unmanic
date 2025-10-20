@@ -268,8 +268,11 @@ def parse_ffmpeg_progress(line):
     frame= 1234 fps=45 q=28.0 size=  12345kB time=00:01:23.45 bitrate=1234.5kbits/s speed=1.23x
     
     :param line: A line of FFmpeg output
-    :return: Dictionary with progress information or None
+    :return: Dictionary with progress information (empty dict if no progress data)
     """
+    # Return empty dict by default (required by Unmanic)
+    result = {}
+    
     # Look for the time= field in FFmpeg output
     if 'time=' in line and 'speed=' in line:
         try:
@@ -289,7 +292,7 @@ def parse_ffmpeg_progress(line):
                 frame_match = re.search(r'frame=\s*(\d+)', line)
                 frame = int(frame_match.group(1)) if frame_match else 0
                 
-                return {
+                result = {
                     'duration': total_seconds,
                     'speed': speed,
                     'frame': frame
@@ -297,7 +300,7 @@ def parse_ffmpeg_progress(line):
         except (ValueError, AttributeError):
             pass
     
-    return None
+    return result
 
 
 def on_worker_process(data):

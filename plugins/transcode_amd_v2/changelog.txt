@@ -1,3 +1,9 @@
+2.1.6:
+- Fixed: Progress parser returning None instead of empty dict
+- Resolves "'NoneType' object has no attribute 'get'" error
+- Progress parser now always returns a valid dictionary
+- Enables proper progress display in Unmanic UI
+
 2.1.5:
 - Fixed: FFmpeg command argument order for VAAPI hardware acceleration
 - Hardware acceleration options now correctly placed before input file
