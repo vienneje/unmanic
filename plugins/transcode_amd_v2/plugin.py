@@ -231,6 +231,46 @@ def detect_source_codec(file_path):
     return 'h264'
 
 
+def parse_ffmpeg_progress(line):
+    """
+    Parse FFmpeg progress output to extract completion percentage
+    
+    FFmpeg outputs progress lines like:
+    frame= 1234 fps=45 q=28.0 size=  12345kB time=00:01:23.45 bitrate=1234.5kbits/s speed=1.23x
+    
+    :param line: A line of FFmpeg output
+    :return: Dictionary with progress information or None
+    """
+    # Look for the time= field in FFmpeg output
+    if 'time=' in line and 'speed=' in line:
+        try:
+            # Extract time processed (format: HH:MM:SS.ms)
+            time_match = re.search(r'time=(\d+):(\d+):(\d+)\.(\d+)', line)
+            if time_match:
+                hours = int(time_match.group(1))
+                minutes = int(time_match.group(2))
+                seconds = int(time_match.group(3))
+                total_seconds = hours * 3600 + minutes * 60 + seconds
+                
+                # Extract speed multiplier
+                speed_match = re.search(r'speed=\s*(\d+\.?\d*)x', line)
+                speed = float(speed_match.group(1)) if speed_match else 0
+                
+                # Extract frame number
+                frame_match = re.search(r'frame=\s*(\d+)', line)
+                frame = int(frame_match.group(1)) if frame_match else 0
+                
+                return {
+                    'duration': total_seconds,
+                    'speed': speed,
+                    'frame': frame
+                }
+        except (ValueError, AttributeError):
+            pass
+    
+    return None
+
+
 def on_worker_process(data):
     """
     Runner function - Transcode video with AMD hardware acceleration
@@ -327,6 +367,9 @@ def on_worker_process(data):
     
     # Set command
     data['exec_command'] = cmd
+    
+    # Set progress parser for FFmpeg output
+    data['command_progress_parser'] = parse_ffmpeg_progress
     
     # Log to worker
     if 'worker_log' in data:
