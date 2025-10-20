@@ -1,3 +1,7 @@
+2.1.1:
+- Fixed: Added compatibility field to info.json for Unmanic plugin handler v2
+- Critical: Resolves "incompatible plugin" error on installation
+
 2.1.0:
 - Changed default to HEVC CPU encoding for maximum space savings (48% reduction)
 - Fixed CPU thread allocation for libx265 (uses pools instead of threads)
