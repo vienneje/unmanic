@@ -117,6 +117,32 @@ class Settings(PluginSettings):
     }
 
 
+def ensure_pciutils_installed():
+    """Ensure pciutils (lspci) is installed for GPU detection"""
+    try:
+        # Check if lspci exists
+        result = subprocess.run(['which', 'lspci'], capture_output=True, timeout=5)
+        if result.returncode != 0:
+            logger.warning("lspci not found, attempting to install pciutils...")
+            # Try to install pciutils
+            install_result = subprocess.run(
+                ['apt-get', 'update'], 
+                capture_output=True, 
+                timeout=30
+            )
+            if install_result.returncode == 0:
+                subprocess.run(
+                    ['apt-get', 'install', '-y', 'pciutils'],
+                    capture_output=True,
+                    timeout=60
+                )
+                logger.info("pciutils installed successfully")
+            else:
+                logger.warning("Could not install pciutils, GPU detection may fail")
+    except Exception as e:
+        logger.debug(f"Error checking/installing pciutils: {e}")
+
+
 def detect_amd_gpu():
     """Detect AMD GPU and available encoders"""
     gpu_info = {
@@ -127,6 +153,9 @@ def detect_amd_gpu():
     }
     
     try:
+        # Ensure pciutils is installed for lspci command
+        ensure_pciutils_installed()
+        
         # Check for AMD GPU via lspci
         result = subprocess.run(['lspci'], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:

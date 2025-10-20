@@ -2,7 +2,7 @@
     "id": "transcode_amd_v2",
     "name": "Transcode AMD v2",
     "author": "viennej",
-    "version": "2.1.3",
+    "version": "2.1.4",
     "tags": "video,hardware acceleration,amd,transcoding,amf,vaapi,gpu,cpu",
     "description": "Comprehensive AMD hardware acceleration with automatic CPU/GPU detection. Supports AMF and VAAPI GPU encoders plus optimized CPU software encoding. Features: Auto/GPU/CPU mode selection, H.264/HEVC codecs, quality presets, and intelligent fallback.",
     "icon": "https://raw.githubusercontent.com/vienneje/unmanic/master/assets/transcode_amd_icon.png",
