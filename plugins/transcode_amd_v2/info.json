@@ -1,0 +1,9 @@
+{
+    "id": "transcode_amd_v2",
+    "name": "Transcode AMD v2",
+    "author": "viennej",
+    "version": "2.0.0",
+    "tags": "video,hardware acceleration,amd,transcoding",
+    "description": "AMD Hardware Acceleration - Auto-detects AMD CPU/GPU and uses optimal encoders (AMF/VAAPI/Software)",
+    "icon": ""
+}

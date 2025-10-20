@@ -1,0 +1,9 @@
+2.0.0:
+- Complete rewrite following official Unmanic plugin patterns
+- Fixed compatibility issues with Unmanic plugin validation
+- Simplified Settings class (no __init__ override)
+- Module-level on_worker_process function
+- Proper error handling and logging
+- Auto-detection of AMD CPU and GPU
+- Support for AMF, VAAPI, and software encoders
+- Encoding mode selection (auto/gpu_only/cpu_only)
