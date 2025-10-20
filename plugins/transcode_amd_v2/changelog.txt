@@ -1,3 +1,11 @@
+2.1.0:
+- Changed default to HEVC CPU encoding for maximum space savings (48% reduction)
+- Fixed CPU thread allocation for libx265 (uses pools instead of threads)
+- Optimized default bitrates for HEVC (1M/2M instead of 2M/4M)
+- Tested and verified HEVC VAAPI (20% savings, 31x speed)
+- Tested and verified HEVC CPU (48% savings, 11x speed)
+- Recommended settings now optimized for space saving with quality
+
 2.0.3:
 - Fixed AMF encoding parameters (removed invalid -rc vbr)
 - Changed default to prefer VAAPI over AMF

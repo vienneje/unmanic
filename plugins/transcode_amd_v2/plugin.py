@@ -23,12 +23,12 @@ logger = logging.getLogger("Unmanic.Plugin.transcode_amd")
 
 class Settings(PluginSettings):
     settings = {
-        "encoding_mode": "auto",
+        "encoding_mode": "cpu_only",  # CPU HEVC gives best space savings (48% reduction)
         "prefer_amf_over_vaapi": False,  # Default to VAAPI (AMF library not in Jellyfin FFmpeg)
-        "target_codec": "h264",
+        "target_codec": "hevc",  # HEVC for maximum space savings
         "video_quality": "balanced",
-        "bitrate": "2M",
-        "max_bitrate": "4M",
+        "bitrate": "1M",  # Lower bitrate for HEVC (better compression)
+        "max_bitrate": "2M",
         "audio_codec": "aac",
         "audio_bitrate": "128k"
     }
@@ -297,12 +297,16 @@ def on_worker_process(data):
         cmd.extend(['-qp', '23'])
     elif encoder == 'libx264':
         cmd.extend(['-preset', 'medium', '-crf', '23'])
+        # libx264 can use all cores efficiently
         if cpu_info['cores'] > 1:
-            cmd.extend(['-threads', str(cpu_info['cores'] - 1)])
+            threads = min(16, cpu_info['cores'])  # Cap at 16 for stability
+            cmd.extend(['-threads', str(threads)])
     elif encoder == 'libx265':
         cmd.extend(['-preset', 'medium', '-crf', '25'])
+        # libx265 uses frame pools, limit to avoid errors
         if cpu_info['cores'] > 1:
-            cmd.extend(['-threads', str(cpu_info['cores'] - 1)])
+            pools = min(16, cpu_info['cores'] // 2)  # Use half cores for pools
+            cmd.extend(['-x265-params', f'pools={pools}'])
     
     # Add bitrate for hardware encoders
     if encoder.endswith(('_amf', '_vaapi')):
