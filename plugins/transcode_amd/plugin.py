@@ -18,7 +18,7 @@ from unmanic.libs.unplugins.settings import PluginSettings
 # Plugin metadata
 __title__ = "Transcode AMD"
 __author__ = "viennej"
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 __description__ = "AMD Hardware Acceleration Transcoding Plugin - CPU and GPU support"
 __icon__ = ""
 
@@ -42,10 +42,6 @@ class Settings(PluginSettings):
     def __init__(self, *args, **kwargs):
         super(Settings, self).__init__(*args, **kwargs)
         
-        # Detect capabilities for info display
-        caps = detect_amd_capabilities()
-        caps_info = self._format_capabilities_info(caps)
-        
         self.form_settings = {
             "encoding_mode": {
                 "label": "Encoding Mode",
@@ -57,20 +53,19 @@ class Settings(PluginSettings):
                     },
                     {
                         "value": "gpu_only",
-                        "label": "GPU Only (VAAPI/AMF)",
+                        "label": "GPU Only (VAAPI/AMF hardware acceleration)",
                     },
                     {
                         "value": "cpu_only",
                         "label": "CPU Only (software encoding)",
                     },
                 ],
-                "help_text": caps_info,
             },
             "prefer_amf_over_vaapi": {
-                "label": "Prefer AMF over VAAPI (GPU mode)",
+                "label": "Prefer AMF over VAAPI (when using GPU)",
             },
             "fallback_to_software": {
-                "label": "Fallback to software encoding on error",
+                "label": "Fallback to software encoding on hardware failure",
             },
             "video_quality": {
                 "label": "Video Quality (for hardware encoding)",
@@ -78,7 +73,7 @@ class Settings(PluginSettings):
                 "select_options": [
                     {
                         "value": "speed",
-                        "label": "Speed (fastest)",
+                        "label": "Speed (fastest encoding)",
                     },
                     {
                         "value": "balanced",
@@ -86,7 +81,7 @@ class Settings(PluginSettings):
                     },
                     {
                         "value": "quality",
-                        "label": "Quality (best)",
+                        "label": "Quality (best quality)",
                     },
                 ],
             },
@@ -104,15 +99,15 @@ class Settings(PluginSettings):
                     },
                     {
                         "value": "copy",
-                        "label": "Copy (same as source)",
+                        "label": "Copy (keep same as source)",
                     },
                 ],
             },
             "bitrate": {
-                "label": "Video Bitrate (e.g., 2M, 5M)",
+                "label": "Video Bitrate (e.g., 2M, 5M, 10M)",
             },
             "max_bitrate": {
-                "label": "Max Video Bitrate (e.g., 4M, 8M)",
+                "label": "Max Video Bitrate (e.g., 4M, 8M, 15M)",
             },
             "audio_codec": {
                 "label": "Audio Codec",
@@ -132,93 +127,6 @@ class Settings(PluginSettings):
                 "label": "Audio Bitrate (e.g., 128k, 256k)",
             },
         }
-    
-    def _format_capabilities_info(self, caps):
-        """Format capabilities info for display"""
-        lines = []
-        
-        lines.append("=" * 50)
-        lines.append("DETECTED AMD HARDWARE")
-        lines.append("=" * 50)
-        lines.append("")
-        
-        # CPU Info
-        lines.append("CPU INFORMATION:")
-        lines.append("-" * 50)
-        if caps['cpu']['detected']:
-            lines.append(f"Model: {caps['cpu']['model']}")
-            lines.append(f"Cores: {caps['cpu']['cores']}")
-            if caps['cpu']['features']:
-                # Group features in rows of 8
-                features = caps['cpu']['features']
-                lines.append("Features:")
-                for i in range(0, len(features), 8):
-                    lines.append(f"  {', '.join(features[i:i+8])}")
-        else:
-            lines.append("Status: AMD CPU not detected")
-        
-        lines.append("")
-        
-        # GPU Info
-        lines.append("GPU INFORMATION:")
-        lines.append("-" * 50)
-        if caps['gpu']['detected']:
-            # Clean up GPU model display
-            gpu_model = caps['gpu']['model']
-            if 'Display controller' in gpu_model:
-                # Extract just the GPU name after the brackets
-                import re
-                match = re.search(r'Advanced Micro Devices.*?\[AMD/ATI\]\s+(?:Device\s+)?\[?([^\]]+)\]?', gpu_model)
-                if match:
-                    lines.append(f"Model: AMD GPU (Device {caps['gpu']['device_id']})")
-                else:
-                    lines.append(f"Model: {gpu_model[:60]}")
-            else:
-                lines.append(f"Model: {gpu_model}")
-            
-            lines.append(f"Vendor ID: {caps['gpu']['vendor_id']}")
-            lines.append(f"Device ID: {caps['gpu']['device_id']}")
-            lines.append(f"Driver: {caps['gpu']['driver']}")
-            lines.append(f"Render Device: {caps['gpu']['render_device']}")
-        else:
-            lines.append("Status: AMD GPU not detected")
-        
-        lines.append("")
-        
-        # Hardware Encoders
-        lines.append("HARDWARE ENCODERS:")
-        lines.append("-" * 50)
-        if caps['encoders']['amf']:
-            lines.append("AMF Encoders:")
-            for encoder in caps['encoders']['amf']:
-                lines.append(f"  ✓ {encoder}")
-        else:
-            lines.append("AMF Encoders: None")
-        
-        lines.append("")
-        
-        if caps['encoders']['vaapi']:
-            lines.append("VAAPI Encoders:")
-            for encoder in caps['encoders']['vaapi']:
-                lines.append(f"  ✓ {encoder}")
-        else:
-            lines.append("VAAPI Encoders: None")
-        
-        lines.append("")
-        
-        # Software Encoders
-        lines.append("SOFTWARE ENCODERS (CPU):")
-        lines.append("-" * 50)
-        if caps['encoders']['software']:
-            for encoder in caps['encoders']['software']:
-                lines.append(f"  ✓ {encoder}")
-        else:
-            lines.append("None detected")
-        
-        lines.append("")
-        lines.append("=" * 50)
-        
-        return "\n".join(lines)
 
 
 def detect_amd_cpu():
@@ -232,27 +140,21 @@ def detect_amd_cpu():
     }
     
     try:
-        # Check CPU model
         with open('/proc/cpuinfo', 'r') as f:
             cpuinfo = f.read()
             
-        # Check if AMD CPU
         if 'AMD' in cpuinfo or 'AuthenticAMD' in cpuinfo:
             cpu_info['detected'] = True
             
-            # Get model name
             model_match = re.search(r'model name\s+:\s+(.+)', cpuinfo)
             if model_match:
                 cpu_info['model'] = model_match.group(1).strip()
             
-            # Count cores and threads
             cpu_info['cores'] = cpuinfo.count('processor')
             
-            # Get CPU flags/features
             flags_match = re.search(r'flags\s+:\s+(.+)', cpuinfo)
             if flags_match:
                 all_flags = flags_match.group(1).split()
-                # Filter for important AMD features
                 important_features = ['avx', 'avx2', 'avx512', 'sse4_1', 'sse4_2', 'fma', 'aes']
                 cpu_info['features'] = [f for f in all_flags if any(feat in f for feat in important_features)]
         
@@ -274,7 +176,6 @@ def detect_amd_gpu():
     }
     
     try:
-        # Check for AMD GPU via lspci
         result = subprocess.run(['lspci', '-nn'], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             for line in result.stdout.split('\n'):
@@ -283,20 +184,17 @@ def detect_amd_gpu():
                         gpu_info['detected'] = True
                         gpu_info['model'] = line.strip()
                         
-                        # Extract vendor and device IDs
                         id_match = re.search(r'\[([0-9a-f]{4}):([0-9a-f]{4})\]', line)
                         if id_match:
                             gpu_info['vendor_id'] = id_match.group(1)
                             gpu_info['device_id'] = id_match.group(2)
                         break
         
-        # Check for render devices
         if os.path.exists('/dev/dri'):
             render_devices = [f for f in os.listdir('/dev/dri') if f.startswith('renderD')]
             if render_devices:
                 gpu_info['render_device'] = f'/dev/dri/{render_devices[0]}'
         
-        # Try to detect driver
         if os.path.exists('/sys/module/amdgpu'):
             gpu_info['driver'] = 'amdgpu'
         elif os.path.exists('/sys/module/radeon'):
@@ -321,19 +219,16 @@ def detect_ffmpeg_encoders():
         if result.returncode == 0:
             lines = result.stdout.split('\n')
             for line in lines:
-                # AMF encoders
                 if '_amf' in line:
                     encoder_match = re.search(r'(\w+_amf)', line)
                     if encoder_match:
                         encoders['amf'].append(encoder_match.group(1))
                 
-                # VAAPI encoders
                 elif '_vaapi' in line:
                     encoder_match = re.search(r'(\w+_vaapi)', line)
                     if encoder_match:
                         encoders['vaapi'].append(encoder_match.group(1))
                 
-                # Software encoders (common ones)
                 elif any(enc in line for enc in ['libx264', 'libx265', 'libsvtav1', 'libvpx']):
                     for enc in ['libx264', 'libx265', 'libsvtav1', 'libvpx-vp9']:
                         if enc in line and enc not in encoders['software']:
@@ -375,21 +270,17 @@ def get_optimal_encoder(codec, capabilities, mode, prefer_amf):
     codec_encoders = encoder_map[codec]
     encoders_available = capabilities['encoders']
     
-    # CPU only mode
     if mode == 'cpu_only':
         return (codec_encoders['software'], 'cpu')
     
-    # GPU only mode
     if mode == 'gpu_only':
         if prefer_amf and codec_encoders.get('amf') in encoders_available.get('amf', []):
             return (codec_encoders['amf'], 'gpu')
         elif codec_encoders.get('vaapi') in encoders_available.get('vaapi', []):
             return (codec_encoders['vaapi'], 'gpu')
         else:
-            # Fallback to CPU if GPU not available
             return (codec_encoders['software'], 'cpu')
     
-    # Auto mode (prefer GPU, fallback to CPU)
     if prefer_amf and codec_encoders.get('amf') in encoders_available.get('amf', []):
         return (codec_encoders['amf'], 'gpu')
     elif codec_encoders.get('vaapi') in encoders_available.get('vaapi', []):
@@ -423,10 +314,8 @@ def on_worker_process(data):
     """
     Runner function - Transcode video with AMD hardware acceleration
     """
-    # Get settings
     settings = Settings(library_id=data.get('library_id'))
     
-    # Get file paths
     file_in = data.get('file_in')
     file_out = data.get('file_out')
     
@@ -434,10 +323,8 @@ def on_worker_process(data):
         logger.error("Missing input or output file")
         return data
     
-    # Detect AMD capabilities (CPU + GPU)
     capabilities = detect_amd_capabilities()
     
-    # Log detected hardware
     logger.info("=== AMD Hardware Detection ===")
     if capabilities['cpu']['detected']:
         logger.info(f"CPU: {capabilities['cpu']['model']}")
@@ -455,35 +342,28 @@ def on_worker_process(data):
     logger.info(f"Available encoders - VAAPI: {capabilities['encoders']['vaapi']}")
     logger.info(f"Available encoders - Software: {capabilities['encoders']['software']}")
     
-    # Get encoding mode
     encoding_mode = settings.get_setting('encoding_mode')
     logger.info(f"Encoding mode: {encoding_mode}")
     
-    # Determine target codec
     target_codec = settings.get_setting('target_codec')
     if target_codec == 'copy':
         target_codec = detect_source_codec(file_in)
     logger.info(f"Target codec: {target_codec}")
     
-    # Get optimal encoder
     prefer_amf = settings.get_setting('prefer_amf_over_vaapi')
     encoder, encoder_type = get_optimal_encoder(target_codec, capabilities, encoding_mode, prefer_amf)
     logger.info(f"Selected encoder: {encoder} (type: {encoder_type})")
     
-    # Build FFmpeg command
     cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', file_in]
     
-    # Add hardware acceleration if using VAAPI
     if encoder.endswith('_vaapi'):
         render_device = capabilities['gpu']['render_device']
         cmd.extend(['-vaapi_device', render_device])
         cmd.extend(['-hwaccel', 'vaapi'])
         cmd.extend(['-hwaccel_output_format', 'vaapi'])
     
-    # Add video encoding
     cmd.extend(['-c:v', encoder])
     
-    # Add encoder-specific parameters
     if encoder.endswith('_amf'):
         quality = settings.get_setting('video_quality')
         cmd.extend(['-quality', quality])
@@ -491,11 +371,9 @@ def on_worker_process(data):
     elif encoder.endswith('_vaapi'):
         cmd.extend(['-qp', '23'])
     elif encoder == 'libx264':
-        # CPU encoding with optimizations
         cmd.extend(['-preset', 'medium', '-crf', '23'])
-        # Use available CPU threads
         if capabilities['cpu']['detected'] and capabilities['cpu']['cores'] > 0:
-            threads = max(1, capabilities['cpu']['cores'] - 1)  # Leave one core free
+            threads = max(1, capabilities['cpu']['cores'] - 1)
             cmd.extend(['-threads', str(threads)])
     elif encoder == 'libx265':
         cmd.extend(['-preset', 'medium', '-crf', '25'])
@@ -503,14 +381,12 @@ def on_worker_process(data):
             threads = max(1, capabilities['cpu']['cores'] - 1)
             cmd.extend(['-threads', str(threads)])
     
-    # Add bitrate for hardware encoders
     if encoder.endswith('_amf') or encoder.endswith('_vaapi'):
         bitrate = settings.get_setting('bitrate')
         max_bitrate = settings.get_setting('max_bitrate')
         cmd.extend(['-b:v', bitrate])
         cmd.extend(['-maxrate', max_bitrate])
     
-    # Add audio encoding
     audio_codec = settings.get_setting('audio_codec')
     if audio_codec == 'copy':
         cmd.extend(['-c:a', 'copy'])
@@ -518,16 +394,12 @@ def on_worker_process(data):
         audio_bitrate = settings.get_setting('audio_bitrate')
         cmd.extend(['-c:a', audio_codec, '-b:a', audio_bitrate])
     
-    # Add output settings
     cmd.extend(['-y', file_out])
     
-    # Set command in data
     data['exec_command'] = cmd
     
-    # Log info
     logger.info(f"FFmpeg command: {' '.join(cmd)}")
     
-    # Add user-friendly log messages
     data['worker_log'].append(f"[Transcode AMD] Mode: {encoding_mode}")
     data['worker_log'].append(f"[Transcode AMD] Encoder: {encoder} ({encoder_type.upper()})")
     
