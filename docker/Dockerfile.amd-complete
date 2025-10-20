@@ -1,0 +1,22 @@
+FROM viennej/unmanic-amd:latest-enhanced
+
+LABEL maintainer="viennej <viennej@github.com>"
+LABEL description="Unmanic with AMD hardware acceleration and transcode-amd plugin"
+
+# Install additional utilities for plugin
+RUN apt-get update && apt-get install -y pciutils && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy AMD transcoding plugin
+COPY plugins/transcode_amd /app/unmanic-plugins/transcode_amd
+
+# Set permissions
+RUN chmod -R 755 /app/unmanic-plugins
+
+# Set working directory
+WORKDIR /app
+
+# Expose port
+EXPOSE 8888
+
+# Set entrypoint
+ENTRYPOINT ["/init"]

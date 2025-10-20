@@ -1,0 +1,10 @@
+{
+    "id": "transcode_amd",
+    "name": "Transcode AMD",
+    "author": "viennej",
+    "version": "1.0.0",
+    "tags": "video,hardware acceleration,amd,transcoding",
+    "description": "AMD Hardware Acceleration Transcoding Plugin - Automatically detects AMD GPU capabilities and uses the best available hardware acceleration features.",
+    "icon": "",
+    "plugin_type": "worker.process"
+}
