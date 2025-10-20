@@ -36,24 +36,80 @@ class Settings(PluginSettings):
     form_settings = {
         "encoding_mode": {
             "label": "Encoding Mode",
+            "input_type": "select",
+            "select_options": [
+                {
+                    "value": "auto",
+                    "label": "Auto - Prefer GPU, fallback to CPU",
+                },
+                {
+                    "value": "gpu_only",
+                    "label": "GPU Only - Force hardware acceleration",
+                },
+                {
+                    "value": "cpu_only",
+                    "label": "CPU Only - Force software encoding",
+                },
+            ],
         },
         "prefer_amf_over_vaapi": {
-            "label": "Prefer AMF over VAAPI (GPU mode)",
+            "label": "Prefer AMF over VAAPI (when using GPU)",
         },
         "target_codec": {
-            "label": "Target Codec (h264/hevc/copy)",
+            "label": "Target Codec",
+            "input_type": "select",
+            "select_options": [
+                {
+                    "value": "h264",
+                    "label": "H.264/AVC",
+                },
+                {
+                    "value": "hevc",
+                    "label": "H.265/HEVC",
+                },
+                {
+                    "value": "copy",
+                    "label": "Copy (same as source)",
+                },
+            ],
         },
         "video_quality": {
-            "label": "Video Quality (balanced/speed/quality)",
+            "label": "Video Quality (for hardware encoders)",
+            "input_type": "select",
+            "select_options": [
+                {
+                    "value": "speed",
+                    "label": "Speed - Fastest encoding",
+                },
+                {
+                    "value": "balanced",
+                    "label": "Balanced - Recommended",
+                },
+                {
+                    "value": "quality",
+                    "label": "Quality - Best quality",
+                },
+            ],
         },
         "bitrate": {
-            "label": "Video Bitrate (e.g., 2M, 5M)",
+            "label": "Video Bitrate (e.g., 2M, 5M, 10M)",
         },
         "max_bitrate": {
-            "label": "Max Video Bitrate (e.g., 4M, 8M)",
+            "label": "Max Video Bitrate (e.g., 4M, 8M, 15M)",
         },
         "audio_codec": {
-            "label": "Audio Codec (aac/copy)",
+            "label": "Audio Codec",
+            "input_type": "select",
+            "select_options": [
+                {
+                    "value": "aac",
+                    "label": "AAC",
+                },
+                {
+                    "value": "copy",
+                    "label": "Copy (no re-encode)",
+                },
+            ],
         },
         "audio_bitrate": {
             "label": "Audio Bitrate (e.g., 128k, 256k)",
