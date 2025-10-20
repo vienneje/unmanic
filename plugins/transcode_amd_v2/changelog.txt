@@ -1,3 +1,20 @@
+2.0.2:
+- Added comprehensive documentation (README.md, description.md)
+- Enhanced changelog with full history
+- Improved plugin description in info.json
+- Added detailed usage instructions
+- Added troubleshooting guide
+- Added hardware compatibility information
+- Added performance benchmarks
+- Better organization of documentation
+
+2.0.1:
+- Added proper UI controls for all settings
+- Fixed form_settings with select dropdowns
+- Added input_type and select_options for all settings
+- Improved settings descriptions and labels
+- Better user experience in settings UI
+
 2.0.0:
 - Complete rewrite following official Unmanic plugin patterns
 - Fixed compatibility issues with Unmanic plugin validation
@@ -7,3 +24,7 @@
 - Auto-detection of AMD CPU and GPU
 - Support for AMF, VAAPI, and software encoders
 - Encoding mode selection (auto/gpu_only/cpu_only)
+
+1.1.x:
+- Previous versions with compatibility issues
+- Removed due to incompatibility with Unmanic validation
