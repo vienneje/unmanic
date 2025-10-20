@@ -6,46 +6,109 @@
 
     Written by:               viennej <viennej@github.com>
     Date:                     2025-01-27
-
-    Copyright:
-           Copyright (C) viennej - All Rights Reserved
-
-           Permission is hereby granted, free of charge, to any person obtaining a copy
-           of this software and associated documentation files (the "Software"), to deal
-           in the Software without restriction, including without limitation the rights
-           to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-           copies of the Software, and to permit persons to whom the Software is
-           furnished to do so, subject to the following conditions:
-
-           The above copyright notice and this permission notice shall be included in all
-           copies or substantial portions of the Software.
-
-           THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-           EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-           MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-           IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-           DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-           OTHERWISE, ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR THE USE
-           OR OTHER DEALINGS IN THE SOFTWARE.
-
 """
 
 import os
 import subprocess
-import json
-import re
-from typing import Dict, List, Optional
+import logging
 
+from unmanic.libs.unplugins.settings import PluginSettings
 
 # Plugin metadata
 __title__ = "Transcode AMD"
 __author__ = "viennej"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __description__ = "AMD Hardware Acceleration Transcoding Plugin"
 __icon__ = ""
 
 
-def detect_amd_gpu() -> Dict:
+logger = logging.getLogger("Unmanic.Plugin.transcode_amd")
+
+
+class Settings(PluginSettings):
+    settings = {
+        "prefer_amf_over_vaapi": True,
+        "fallback_to_software": True,
+        "video_quality": "balanced",
+        "target_codec": "h264",
+        "bitrate": "2M",
+        "max_bitrate": "4M",
+        "audio_codec": "aac",
+        "audio_bitrate": "128k"
+    }
+
+    def __init__(self, *args, **kwargs):
+        super(Settings, self).__init__(*args, **kwargs)
+        self.form_settings = {
+            "prefer_amf_over_vaapi": {
+                "label": "Prefer AMF over VAAPI",
+            },
+            "fallback_to_software": {
+                "label": "Fallback to software encoding",
+            },
+            "video_quality": {
+                "label": "Video Quality (AMF)",
+                "input_type": "select",
+                "select_options": [
+                    {
+                        "value": "speed",
+                        "label": "Speed",
+                    },
+                    {
+                        "value": "balanced",
+                        "label": "Balanced",
+                    },
+                    {
+                        "value": "quality",
+                        "label": "Quality",
+                    },
+                ],
+            },
+            "target_codec": {
+                "label": "Target Codec",
+                "input_type": "select",
+                "select_options": [
+                    {
+                        "value": "h264",
+                        "label": "H.264/AVC",
+                    },
+                    {
+                        "value": "hevc",
+                        "label": "H.265/HEVC",
+                    },
+                    {
+                        "value": "copy",
+                        "label": "Copy (same as source)",
+                    },
+                ],
+            },
+            "bitrate": {
+                "label": "Video Bitrate (e.g., 2M, 5M)",
+            },
+            "max_bitrate": {
+                "label": "Max Video Bitrate (e.g., 4M, 8M)",
+            },
+            "audio_codec": {
+                "label": "Audio Codec",
+                "input_type": "select",
+                "select_options": [
+                    {
+                        "value": "aac",
+                        "label": "AAC",
+                    },
+                    {
+                        "value": "copy",
+                        "label": "Copy",
+                    },
+                ],
+            },
+            "audio_bitrate": {
+                "label": "Audio Bitrate (e.g., 128k, 256k)",
+            },
+        }
+
+
+def detect_amd_gpu():
     """Detect AMD GPU and available hardware acceleration"""
     capabilities = {
         'has_vaapi': False,
@@ -68,7 +131,6 @@ def detect_amd_gpu() -> Dict:
         if os.path.exists('/dev/dri'):
             render_devices = [f for f in os.listdir('/dev/dri') if f.startswith('renderD')]
             if render_devices:
-                capabilities['has_vaapi'] = True
                 capabilities['render_device'] = f'/dev/dri/{render_devices[0]}'
         
         # Check FFmpeg encoders
@@ -81,39 +143,28 @@ def detect_amd_gpu() -> Dict:
                 capabilities['has_vaapi'] = True
                 
     except Exception as e:
-        pass
+        logger.debug(f"Error detecting AMD GPU: {e}")
     
     return capabilities
 
 
-def get_optimal_encoder(codec: str, capabilities: Dict, settings: Dict) -> tuple:
-    """Get optimal encoder and parameters for codec"""
-    prefer_amf = settings.get('prefer_amf_over_vaapi', True)
-    
+def get_optimal_encoder(codec, capabilities, prefer_amf):
+    """Get optimal encoder for codec"""
     encoder_map = {
         'h264': {
-            'amf': ('h264_amf', ['-quality', settings.get('video_quality', 'balanced')]),
-            'vaapi': ('h264_vaapi', ['-qp', '23']),
-            'software': ('libx264', ['-preset', 'medium', '-crf', '23'])
+            'amf': 'h264_amf',
+            'vaapi': 'h264_vaapi',
+            'software': 'libx264'
         },
         'hevc': {
-            'amf': ('hevc_amf', ['-quality', settings.get('video_quality', 'balanced')]),
-            'vaapi': ('hevc_vaapi', ['-qp', '25']),
-            'software': ('libx265', ['-preset', 'medium', '-crf', '25'])
-        },
-        'av1': {
-            'amf': ('av1_amf', ['-quality', settings.get('video_quality', 'balanced')]),
-            'vaapi': ('av1_vaapi', ['-qp', '30']),
-            'software': ('libsvtav1', ['-preset', '7'])
-        },
-        'vp9': {
-            'vaapi': ('vp9_vaapi', ['-qp', '30']),
-            'software': ('libvpx-vp9', ['-crf', '30', '-b:v', '0'])
+            'amf': 'hevc_amf',
+            'vaapi': 'hevc_vaapi',
+            'software': 'libx265'
         }
     }
     
     if codec not in encoder_map:
-        return ('libx264', ['-preset', 'medium', '-crf', '23'])
+        return 'libx264'
     
     codec_encoders = encoder_map[codec]
     
@@ -123,10 +174,10 @@ def get_optimal_encoder(codec: str, capabilities: Dict, settings: Dict) -> tuple
     elif capabilities['has_vaapi'] and 'vaapi' in codec_encoders:
         return codec_encoders['vaapi']
     else:
-        return codec_encoders.get('software', ('libx264', ['-preset', 'medium', '-crf', '23']))
+        return codec_encoders.get('software', 'libx264')
 
 
-def detect_source_codec(file_path: str) -> str:
+def detect_source_codec(file_path):
     """Detect video codec from source file"""
     try:
         result = subprocess.run(
@@ -137,49 +188,22 @@ def detect_source_codec(file_path: str) -> str:
         )
         if result.returncode == 0:
             codec = result.stdout.strip().lower()
-            # Map codec names
             if codec in ['h264', 'avc']:
                 return 'h264'
             elif codec in ['hevc', 'h265']:
                 return 'hevc'
-            elif codec == 'av1':
-                return 'av1'
-            elif codec == 'vp9':
-                return 'vp9'
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Error detecting codec: {e}")
     
-    return 'h264'  # Default
+    return 'h264'
 
 
 def on_worker_process(data):
     """
-    Main plugin function for AMD hardware transcoding
-    
-    The 'data' object includes:
-        file_in                 - String, the source file to be processed
-        file_out                - String, the destination output file
-        exec_command            - Array, the FFmpeg command to execute
-        command_progress_parser - Function, progress parser for FFmpeg output
-        worker_log              - Array, log lines for the frontend
-    
-    Returns:
-        data - Modified data object with FFmpeg command
+    Runner function - Transcode video with AMD hardware acceleration
     """
-    import logging
-    
-    # Setup logging
-    logger = logging.getLogger("Unmanic.Plugin.transcode_amd")
-    
-    # Get settings (would come from plugin settings in real implementation)
-    settings = {
-        'prefer_amf_over_vaapi': data.get('prefer_amf_over_vaapi', True),
-        'video_quality': data.get('video_quality', 'balanced'),
-        'bitrate': data.get('bitrate', '2M'),
-        'max_bitrate': data.get('max_bitrate', '4M'),
-        'audio_bitrate': data.get('audio_bitrate', '128k'),
-        'fallback_to_software': data.get('fallback_to_software', True)
-    }
+    # Get settings
+    settings = Settings(library_id=data.get('library_id'))
     
     # Get file paths
     file_in = data.get('file_in')
@@ -192,37 +216,56 @@ def on_worker_process(data):
     # Detect AMD capabilities
     capabilities = detect_amd_gpu()
     logger.info(f"AMD GPU detected: {capabilities['gpu_detected']}")
-    logger.info(f"VAAPI available: {capabilities['has_vaapi']}")
-    logger.info(f"AMF available: {capabilities['has_amf']}")
+    logger.info(f"VAAPI: {capabilities['has_vaapi']}, AMF: {capabilities['has_amf']}")
     
-    # Detect source codec
-    source_codec = detect_source_codec(file_in)
-    logger.info(f"Source codec: {source_codec}")
+    # Determine target codec
+    target_codec = settings.get_setting('target_codec')
+    if target_codec == 'copy':
+        target_codec = detect_source_codec(file_in)
     
     # Get optimal encoder
-    encoder, encoder_params = get_optimal_encoder(source_codec, capabilities, settings)
+    prefer_amf = settings.get_setting('prefer_amf_over_vaapi')
+    encoder = get_optimal_encoder(target_codec, capabilities, prefer_amf)
     logger.info(f"Selected encoder: {encoder}")
     
     # Build FFmpeg command
-    cmd = ['ffmpeg', '-i', file_in]
+    cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', file_in]
     
     # Add hardware acceleration if using VAAPI
     if encoder.endswith('_vaapi'):
+        cmd.extend(['-vaapi_device', capabilities['render_device']])
         cmd.extend(['-hwaccel', 'vaapi'])
-        cmd.extend(['-hwaccel_device', capabilities['render_device']])
         cmd.extend(['-hwaccel_output_format', 'vaapi'])
     
     # Add video encoding
     cmd.extend(['-c:v', encoder])
-    cmd.extend(encoder_params)
+    
+    # Add encoder-specific parameters
+    if encoder.endswith('_amf'):
+        quality = settings.get_setting('video_quality')
+        cmd.extend(['-quality', quality])
+        cmd.extend(['-rc', 'vbr'])
+    elif encoder.endswith('_vaapi'):
+        cmd.extend(['-qp', '23'])
+    elif encoder == 'libx264':
+        cmd.extend(['-preset', 'medium', '-crf', '23'])
+    elif encoder == 'libx265':
+        cmd.extend(['-preset', 'medium', '-crf', '25'])
     
     # Add bitrate for hardware encoders
     if encoder.endswith('_amf') or encoder.endswith('_vaapi'):
-        cmd.extend(['-b:v', settings['bitrate']])
-        cmd.extend(['-maxrate', settings['max_bitrate']])
+        bitrate = settings.get_setting('bitrate')
+        max_bitrate = settings.get_setting('max_bitrate')
+        cmd.extend(['-b:v', bitrate])
+        cmd.extend(['-maxrate', max_bitrate])
     
     # Add audio encoding
-    cmd.extend(['-c:a', 'aac', '-b:a', settings['audio_bitrate']])
+    audio_codec = settings.get_setting('audio_codec')
+    if audio_codec == 'copy':
+        cmd.extend(['-c:a', 'copy'])
+    else:
+        audio_bitrate = settings.get_setting('audio_bitrate')
+        cmd.extend(['-c:a', audio_codec, '-b:a', audio_bitrate])
     
     # Add output settings
     cmd.extend(['-y', file_out])
@@ -230,9 +273,9 @@ def on_worker_process(data):
     # Set command in data
     data['exec_command'] = cmd
     
-    # Log command
+    # Log info
     logger.info(f"FFmpeg command: {' '.join(cmd)}")
-    data['worker_log'].append(f"Using encoder: {encoder}")
-    data['worker_log'].append(f"AMD GPU: {'Detected' if capabilities['gpu_detected'] else 'Not detected'}")
+    data['worker_log'].append(f"[Transcode AMD] Using encoder: {encoder}")
+    data['worker_log'].append(f"[Transcode AMD] AMD GPU: {'Detected' if capabilities['gpu_detected'] else 'Not detected'}")
     
     return data
