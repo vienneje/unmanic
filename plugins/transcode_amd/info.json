@@ -2,7 +2,7 @@
     "id": "transcode_amd",
     "name": "Transcode AMD",
     "author": "viennej",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "tags": "video,hardware acceleration,amd,transcoding,cpu,gpu",
     "description": "AMD Hardware Acceleration Transcoding Plugin - Supports both AMD CPU and GPU with detailed capability detection. Choose between CPU-only, GPU-only, or auto mode.",
     "icon": "",

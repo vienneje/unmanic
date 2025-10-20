@@ -18,7 +18,7 @@ from unmanic.libs.unplugins.settings import PluginSettings
 # Plugin metadata
 __title__ = "Transcode AMD"
 __author__ = "viennej"
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 __description__ = "AMD Hardware Acceleration Transcoding Plugin - CPU and GPU support"
 __icon__ = ""
 
@@ -36,8 +36,7 @@ class Settings(PluginSettings):
         "bitrate": "2M",
         "max_bitrate": "4M",
         "audio_codec": "aac",
-        "audio_bitrate": "128k",
-        "show_capabilities": False
+        "audio_bitrate": "128k"
     }
 
     def __init__(self, *args, **kwargs):
@@ -65,16 +64,13 @@ class Settings(PluginSettings):
                         "label": "CPU Only (software encoding)",
                     },
                 ],
+                "help_text": caps_info,
             },
             "prefer_amf_over_vaapi": {
                 "label": "Prefer AMF over VAAPI (GPU mode)",
             },
             "fallback_to_software": {
                 "label": "Fallback to software encoding on error",
-            },
-            "show_capabilities": {
-                "label": f"AMD Capabilities Detected:\n{caps_info}",
-                "sub_setting": True,
             },
             "video_quality": {
                 "label": "Video Quality (for hardware encoding)",
@@ -141,43 +137,86 @@ class Settings(PluginSettings):
         """Format capabilities info for display"""
         lines = []
         
+        lines.append("=" * 50)
+        lines.append("DETECTED AMD HARDWARE")
+        lines.append("=" * 50)
+        lines.append("")
+        
         # CPU Info
+        lines.append("CPU INFORMATION:")
+        lines.append("-" * 50)
         if caps['cpu']['detected']:
-            lines.append(f"🔹 CPU: {caps['cpu']['model']}")
-            lines.append(f"  Cores: {caps['cpu']['cores']}")
+            lines.append(f"Model: {caps['cpu']['model']}")
+            lines.append(f"Cores: {caps['cpu']['cores']}")
             if caps['cpu']['features']:
-                lines.append(f"  Features: {', '.join(caps['cpu']['features'][:5])}")
+                # Group features in rows of 8
+                features = caps['cpu']['features']
+                lines.append("Features:")
+                for i in range(0, len(features), 8):
+                    lines.append(f"  {', '.join(features[i:i+8])}")
         else:
-            lines.append("🔹 AMD CPU: Not detected")
+            lines.append("Status: AMD CPU not detected")
         
         lines.append("")
         
         # GPU Info
+        lines.append("GPU INFORMATION:")
+        lines.append("-" * 50)
         if caps['gpu']['detected']:
-            lines.append(f"🔹 GPU: {caps['gpu']['model']}")
-            lines.append(f"  Vendor ID: {caps['gpu']['vendor_id']}")
-            if caps['gpu']['device_id']:
-                lines.append(f"  Device ID: {caps['gpu']['device_id']}")
+            # Clean up GPU model display
+            gpu_model = caps['gpu']['model']
+            if 'Display controller' in gpu_model:
+                # Extract just the GPU name after the brackets
+                import re
+                match = re.search(r'Advanced Micro Devices.*?\[AMD/ATI\]\s+(?:Device\s+)?\[?([^\]]+)\]?', gpu_model)
+                if match:
+                    lines.append(f"Model: AMD GPU (Device {caps['gpu']['device_id']})")
+                else:
+                    lines.append(f"Model: {gpu_model[:60]}")
+            else:
+                lines.append(f"Model: {gpu_model}")
+            
+            lines.append(f"Vendor ID: {caps['gpu']['vendor_id']}")
+            lines.append(f"Device ID: {caps['gpu']['device_id']}")
+            lines.append(f"Driver: {caps['gpu']['driver']}")
+            lines.append(f"Render Device: {caps['gpu']['render_device']}")
         else:
-            lines.append("🔹 AMD GPU: Not detected")
+            lines.append("Status: AMD GPU not detected")
         
         lines.append("")
         
         # Hardware Encoders
-        lines.append("🔹 Hardware Encoders:")
+        lines.append("HARDWARE ENCODERS:")
+        lines.append("-" * 50)
         if caps['encoders']['amf']:
-            lines.append(f"  AMF: {', '.join(caps['encoders']['amf'])}")
+            lines.append("AMF Encoders:")
+            for encoder in caps['encoders']['amf']:
+                lines.append(f"  ✓ {encoder}")
+        else:
+            lines.append("AMF Encoders: None")
+        
+        lines.append("")
+        
         if caps['encoders']['vaapi']:
-            lines.append(f"  VAAPI: {', '.join(caps['encoders']['vaapi'])}")
-        if not caps['encoders']['amf'] and not caps['encoders']['vaapi']:
-            lines.append("  None detected")
+            lines.append("VAAPI Encoders:")
+            for encoder in caps['encoders']['vaapi']:
+                lines.append(f"  ✓ {encoder}")
+        else:
+            lines.append("VAAPI Encoders: None")
         
         lines.append("")
         
         # Software Encoders
-        lines.append("🔹 Software Encoders:")
+        lines.append("SOFTWARE ENCODERS (CPU):")
+        lines.append("-" * 50)
         if caps['encoders']['software']:
-            lines.append(f"  {', '.join(caps['encoders']['software'])}")
+            for encoder in caps['encoders']['software']:
+                lines.append(f"  ✓ {encoder}")
+        else:
+            lines.append("None detected")
+        
+        lines.append("")
+        lines.append("=" * 50)
         
         return "\n".join(lines)
 
