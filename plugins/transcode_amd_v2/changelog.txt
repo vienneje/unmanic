@@ -1,3 +1,9 @@
+2.1.5:
+- Fixed: FFmpeg command argument order for VAAPI hardware acceleration
+- Hardware acceleration options now correctly placed before input file
+- Resolves "cannot be applied to output url" error
+- Critical fix for GPU encoding to work properly
+
 2.1.4:
 - Added: Auto-install pciutils if missing (fixes GPU detection on fresh containers)
 - Ensures lspci command is available for AMD GPU detection

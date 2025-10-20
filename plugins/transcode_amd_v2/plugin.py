@@ -346,13 +346,16 @@ def on_worker_process(data):
     logger.info(f"Mode: {mode}, Encoder: {encoder} ({encoder_type})")
     
     # Build FFmpeg command
-    cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', file_in]
+    cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'info']
     
-    # Add hardware acceleration for VAAPI
+    # Add hardware acceleration for VAAPI (MUST come before -i input)
     if encoder.endswith('_vaapi'):
         cmd.extend(['-vaapi_device', gpu_info['render_device']])
         cmd.extend(['-hwaccel', 'vaapi'])
         cmd.extend(['-hwaccel_output_format', 'vaapi'])
+    
+    # Add input file
+    cmd.extend(['-i', file_in])
     
     # Add video encoding
     cmd.extend(['-c:v', encoder])
