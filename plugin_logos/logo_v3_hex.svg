@@ -1,0 +1,31 @@
+<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="techGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF2D2D;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ED1C24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C41E3A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="256" height="256" fill="#000" rx="40"/>
+  
+  <!-- Hexagon shape (processor style) -->
+  <polygon points="128,40 188,78 188,154 128,192 68,154 68,78" 
+           fill="none" stroke="url(#techGrad)" stroke-width="6"/>
+  
+  <!-- Inner hexagon -->
+  <polygon points="128,70 168,95 168,145 128,170 88,145 88,95" 
+           fill="url(#techGrad)" opacity="0.3"/>
+  
+  <!-- Center GPU symbol -->
+  <rect x="108" y="108" width="40" height="40" fill="#ED1C24" rx="4"/>
+  <rect x="118" y="118" width="20" height="20" fill="#000" rx="2"/>
+  
+  <!-- Tech lines -->
+  <line x1="128" y1="25" x2="128" y2="40" stroke="#ED1C24" stroke-width="4"/>
+  <line x1="128" y1="192" x2="128" y2="207" stroke="#ED1C24" stroke-width="4"/>
+  
+  <!-- AMD text -->
+  <text x="128" y="235" font-family="Courier New,monospace" font-size="24" font-weight="bold" fill="#ED1C24" text-anchor="middle">&lt;AMD/&gt;</text>
+</svg>
