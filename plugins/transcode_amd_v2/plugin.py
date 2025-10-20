@@ -24,7 +24,7 @@ logger = logging.getLogger("Unmanic.Plugin.transcode_amd")
 class Settings(PluginSettings):
     settings = {
         "encoding_mode": "auto",
-        "prefer_amf_over_vaapi": True,
+        "prefer_amf_over_vaapi": False,  # Default to VAAPI (AMF library not in Jellyfin FFmpeg)
         "target_codec": "h264",
         "video_quality": "balanced",
         "bitrate": "2M",
@@ -291,7 +291,8 @@ def on_worker_process(data):
     # Add encoder-specific parameters
     if encoder.endswith('_amf'):
         quality = settings.get_setting('video_quality')
-        cmd.extend(['-quality', quality, '-rc', 'vbr'])
+        cmd.extend(['-quality', quality])
+        cmd.extend(['-usage', 'transcoding'])  # transcoding, webcam, lowlatency, ultralowlatency
     elif encoder.endswith('_vaapi'):
         cmd.extend(['-qp', '23'])
     elif encoder == 'libx264':

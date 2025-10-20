@@ -1,3 +1,11 @@
+2.0.3:
+- Fixed AMF encoding parameters (removed invalid -rc vbr)
+- Changed default to prefer VAAPI over AMF
+- Tested all encoding modes: VAAPI ✅ CPU ✅ AMF ❌ (library missing)
+- VAAPI H.264 encoding verified working at 32x realtime
+- CPU encoding verified working with proper thread allocation
+- Updated to use -usage transcoding for AMF (when available)
+
 2.0.2:
 - Added comprehensive documentation (README.md, description.md)
 - Enhanced changelog with full history
