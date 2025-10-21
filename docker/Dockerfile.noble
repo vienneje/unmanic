@@ -1,0 +1,117 @@
+FROM lsiobase/ubuntu:noble
+LABEL maintainer="viennej"
+LABEL description="Unmanic optimized for AMD Ryzen AI with Ubuntu 24.04 LTS Noble"
+
+# Env variables
+ENV \
+    LIBVA_DRIVERS_PATH="/usr/lib/x86_64-linux-gnu/dri" \
+    LIBVA_DRIVER_NAME="radeonsi" \
+    NVIDIA_DRIVER_CAPABILITIES="compute,video,utility" \
+    NVIDIA_VISIBLE_DEVICES="all" \
+    XDG_RUNTIME_DIR="/tmp/runtime-dir" \
+    PATH="/usr/lib/jellyfin-ffmpeg:$PATH"
+
+# Install the runtime dependencies and AMD-optimized packages
+RUN \
+    echo "**** Install build dependencies requirements ****" \
+        && apt-get update \
+        && apt-get install -y \
+            ca-certificates \
+            curl \
+            gnupg \
+            wget \
+            software-properties-common \
+    && \
+    echo "**** Install runtime packages ****" \
+        && apt-get install -y \
+            libexpat1 \
+            libglib2.0-0 \
+            libgomp1 \
+            libharfbuzz0b \
+            libmediainfo0v5 \
+            libv4l-0 \
+            libx11-6 \
+            libxcb1 \
+            libxext6 \
+            libxml2 \
+    && \
+    echo "**** Install all available media acceleration packages ****" \
+        && apt-get install -y \
+            va-driver-all \
+            mesa-va-drivers \
+            mesa-vdpau-drivers \
+            libva2 \
+            libva-drm2 \
+            vainfo \
+            mesa-utils \
+            clinfo \
+    && \
+    echo "**** Install AMD-specific packages for RDNA 3.5 and Ryzen AI ****" \
+        && apt-get install -y \
+            radeontop \
+            pciutils \
+            lshw \
+    && \
+    echo "**** Set AMD-specific environment variables ****" \
+        && echo "export RADV_PERFTEST=gpl" >> /etc/environment \
+        && echo "export AMD_VULKAN_ICD=RADV" >> /etc/environment \
+        && echo "export LIBVA_DRIVER_NAME=radeonsi" >> /etc/environment \
+    && \
+    echo "**** Add LLVM 21 repository ****" \
+        && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+        && echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | tee /etc/apt/sources.list.d/llvm.list \
+        && echo "deb-src http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | tee -a /etc/apt/sources.list.d/llvm.list \
+    && \
+    echo "**** Install LLVM 21 for optimal AMD GPU code generation ****" \
+        && apt-get update \
+        && apt-get install -y \
+            llvm-21 \
+            llvm-21-dev \
+            llvm-21-runtime \
+            llvm-21-tools \
+            clang-21 \
+            libc++-21-dev \
+            libc++abi-21-dev \
+    && \
+    echo "**** Add Jellyfin FFmpeg repository ****" \
+        && curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/jellyfin.gpg \
+        && echo "deb [arch=$( dpkg --print-architecture )] https://repo.jellyfin.org/$( awk -F'=' '/^ID=/{ print $NF }' /etc/os-release ) $( awk -F'=' '/^VERSION_CODENAME=/{ print $NF }' /etc/os-release ) main" | tee /etc/apt/sources.list.d/jellyfin.list \
+    && \
+    echo "**** Install Jellyfin FFmpeg 7 with extended AMD support ****" \
+        && apt-get update \
+        && apt-get install -y jellyfin-ffmpeg7 \
+    && \
+    echo "**** Install hardware info tools packages ****" \
+        && apt-get install -y \
+            hwinfo \
+            i2c-tools \
+            ipmitool \
+            lm-sensors \
+            smartmontools \
+    && \
+    echo "**** Install python3 and pip ****" \
+        && apt-get install -y \
+            python3 \
+            python3-pip \
+            python3-dev \
+    && \
+    echo "**** Install utility packages ****" \
+        && apt-get install -y \
+            sqlite3 \
+            unzip \
+            zip \
+    && \
+    echo "**** Cleanup ****" \
+        && apt-get clean \
+        && rm -rf \
+            /tmp/* \
+            /var/lib/apt/lists/* \
+            /var/tmp/*
+
+# Copy Unmanic application from builder
+# Note: This assumes you're building with the official Unmanic source
+# For now, we'll rely on the base image having Unmanic pre-installed
+
+EXPOSE 8888
+
+VOLUME /config /tmp/unmanic

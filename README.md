@@ -30,10 +30,28 @@ docker pull viennej/unmanic-amd:v2.1.8
 ```
 
 **Available Tags:**
-- `latest` - Latest stable build with AMD optimizations
+- `latest` - Latest stable build with AMD optimizations (Ubuntu 22.04)
 - `latest-enhanced` - Same as latest, includes Jellyfin FFmpeg 7
 - `v2.1.8` - Latest version with optimized HEVC encoding
+- `noble` / `ubuntu24.04` - Ubuntu 24.04 LTS with Mesa 25.0.7 (Recommended for Ryzen AI)
 - `ffmpeg7` - FFmpeg 7 base image
+
+### 🆕 Ubuntu 24.04 LTS (Noble) - Recommended for AMD Ryzen AI
+
+**New image available**: `viennej/unmanic-amd:noble`
+
+**Why upgrade to Noble?**
+- ✅ **Mesa 25.0.7** - Full RDNA 3.5 GPU support (vs Mesa 22.x in 22.04)
+- ✅ **Better NPU/AI support** - Enhanced recognition of AMD Ryzen AI accelerator cores
+- ✅ **Kernel 6.8+ compatibility** - Better match for modern AMD hardware
+- ✅ **Longer support** - Supported until April 2029 (vs 2027 for 22.04)
+- ✅ **Same software**: Jellyfin FFmpeg 7.1.2, LLVM 21.1.3
+
+**Performance**: Marginally faster (+0.9%) with significantly better hardware support for Ryzen AI MAX+/PRO processors.
+
+```bash
+docker pull viennej/unmanic-amd:noble
+```
 
 ## 🚀 Quick Start Guide
 
@@ -221,13 +239,24 @@ ffmpeg -hide_banner -loglevel info \
 
 ### Performance Benchmarks
 
+#### Ubuntu 22.04 LTS (Jammy) - Mesa 22.x
+
 **Tested on AMD Ryzen AI 9 HX PRO 370 + Radeon 890M:**
-- **HEVC VAAPI GPU**: 31.6x realtime (1080p)
+- **HEVC VAAPI GPU**: 31.6x realtime (1080p, 30s test file)
 - **HEVC CPU (libx265)**: 11x realtime (1080p)
 - **H.264 VAAPI GPU**: 32x realtime (1080p)
 
 **Tested on Unraid NAS (AMD GPU):**
 - **HEVC VAAPI GPU**: 3.93x realtime (720p)
+
+#### Ubuntu 24.04 LTS (Noble) - Mesa 25.0.7
+
+**Tested on AMD Ryzen AI 9 HX PRO 370 + Radeon 890M:**
+- **HEVC VAAPI GPU**: 31.9x realtime (1080p, 30s test file)
+- **Improvement**: +0.9% faster encoding with Mesa 25.0.7
+- **Benefits**: Better driver support for RDNA 3.5, enhanced AI/NPU recognition
+
+**Conclusion**: Ubuntu 24.04 with Mesa 25.0.7 provides marginally better performance and significantly improved hardware support for newer AMD Ryzen AI processors. Recommended for Ryzen AI MAX+/PRO series with RDNA 3.5 GPUs.
 
 **File Size Reduction:**
 - **H.264 → HEVC**: ~32-48% size reduction
