@@ -108,9 +108,26 @@ RUN \
             /var/lib/apt/lists/* \
             /var/tmp/*
 
-# Copy Unmanic application from builder
-# Note: This assumes you're building with the official Unmanic source
-# For now, we'll rely on the base image having Unmanic pre-installed
+# Install Unmanic from PyPI
+RUN \
+    echo "**** Install Unmanic ****" \
+        && pip3 install --no-cache-dir --break-system-packages unmanic \
+    && \
+    echo "**** Create Unmanic directories ****" \
+        && mkdir -p /app/unmanic \
+    && \
+    echo "**** Create Unmanic service ****" \
+        && mkdir -p /etc/services.d/unmanic \
+        && echo '#!/usr/bin/with-contenv bash' > /etc/services.d/unmanic/run \
+        && echo 'exec s6-setuidgid root unmanic' >> /etc/services.d/unmanic/run \
+        && chmod +x /etc/services.d/unmanic/run \
+    && \
+    echo "**** Cleanup ****" \
+        && apt-get clean \
+        && rm -rf \
+            /tmp/* \
+            /var/lib/apt/lists/* \
+            /var/tmp/*
 
 EXPOSE 8888
 
