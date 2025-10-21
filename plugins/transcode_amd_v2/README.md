@@ -313,6 +313,7 @@ For issues, questions, or feature requests:
 
 ---
 
-**Version**: 2.0.1  
-**Last Updated**: 2025-01-27  
-**Author**: viennej
+**Version**: 2.2.0  
+**Last Updated**: 2025-10-21  
+**Author**: viennej  
+**License**: MIT
