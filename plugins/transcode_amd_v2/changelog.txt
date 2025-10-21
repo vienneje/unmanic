@@ -1,3 +1,8 @@
+2.2.1:
+- Fixed ETC calculation by returning percent as integer (not string)
+- Frontend ETC calculation requires numeric percent value
+- Progress tracking now fully functional with accurate ETC display
+
 2.2.0:
 - Fixed ETC (Estimated Time to Completion) display
 - Progress parser now returns percent as STRING (required by Unmanic)
