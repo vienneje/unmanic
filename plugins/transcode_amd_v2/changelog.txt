@@ -1,3 +1,10 @@
+2.2.0:
+- Fixed ETC (Estimated Time to Completion) display
+- Progress parser now returns percent as STRING (required by Unmanic)
+- Simplified parser - removed unnecessary monitor access
+- ETC now calculated correctly based on elapsed time and percentage
+- Verified compatibility with Unmanic's progress tracking system
+
 2.1.9:
 - Implemented custom FFmpeg progress parser for accurate progress tracking
 - Added get_video_duration() function using ffprobe to determine video length

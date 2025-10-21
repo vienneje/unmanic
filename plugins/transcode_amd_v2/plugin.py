@@ -301,12 +301,12 @@ class FFmpegProgressParser:
             unset: If True, unregister the process (it's completed)
         
         Returns:
-            Dict with 'percent', 'paused', 'killed' keys
+            Dict with 'percent' (as string), 'paused', 'killed' keys
         """
         # Handle process unregistration (completion)
         if unset:
             return {
-                'percent': 100,
+                'percent': '100',
                 'paused': False,
                 'killed': False
             }
@@ -315,7 +315,7 @@ class FFmpegProgressParser:
         if pid is not None and not self.proc_registered:
             self.proc_registered = True
             return {
-                'percent': 0,
+                'percent': '0',
                 'paused': False,
                 'killed': False
             }
@@ -337,8 +337,9 @@ class FFmpegProgressParser:
                 
                 logger.debug(f"FFmpeg progress: {current_seconds:.2f}s / {self.total_duration:.2f}s = {self.current_percent}%")
         
+        # Return percent as STRING (Unmanic expects string format)
         return {
-            'percent': self.current_percent,
+            'percent': str(self.current_percent),
             'paused': False,
             'killed': False
         }
