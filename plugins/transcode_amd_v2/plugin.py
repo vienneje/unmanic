@@ -23,14 +23,15 @@ logger = logging.getLogger("Unmanic.Plugin.transcode_amd")
 
 class Settings(PluginSettings):
     settings = {
-        "encoding_mode": "cpu_only",  # CPU HEVC gives best space savings (48% reduction)
+        "encoding_mode": "auto",  # Auto mode: prefer GPU, fallback to CPU
         "prefer_amf_over_vaapi": False,  # Default to VAAPI (AMF library not in Jellyfin FFmpeg)
         "target_codec": "hevc",  # HEVC for maximum space savings
         "video_quality": "balanced",
-        "bitrate": "1M",  # Lower bitrate for HEVC (better compression)
-        "max_bitrate": "2M",
+        "bitrate": "4M",  # Optimized bitrate for quality (4M avg, 6M max)
+        "max_bitrate": "6M",
         "audio_codec": "aac",
-        "audio_bitrate": "128k"
+        "audio_bitrate": "192k",  # Higher quality audio
+        "audio_channels": "2"  # Stereo output
     }
     
     form_settings = {
@@ -112,7 +113,10 @@ class Settings(PluginSettings):
             ],
         },
         "audio_bitrate": {
-            "label": "Audio Bitrate (e.g., 128k, 256k)",
+            "label": "Audio Bitrate (e.g., 128k, 192k, 256k)",
+        },
+        "audio_channels": {
+            "label": "Audio Channels (e.g., 2 for stereo, 6 for 5.1)",
         },
     }
 
@@ -326,7 +330,12 @@ def on_worker_process(data):
         cmd.extend(['-quality', quality])
         cmd.extend(['-usage', 'transcoding'])  # transcoding, webcam, lowlatency, ultralowlatency
     elif encoder.endswith('_vaapi'):
-        cmd.extend(['-qp', '23'])
+        # VAAPI optimized settings for quality
+        cmd.extend(['-rc_mode', 'VBR'])  # Variable bitrate mode
+        cmd.extend(['-qp', '20'])  # Lower QP = higher quality
+        # Add profile and level for HEVC
+        if encoder == 'hevc_vaapi':
+            cmd.extend(['-profile:v', 'main', '-level', '5.1'])
     elif encoder == 'libx264':
         cmd.extend(['-preset', 'medium', '-crf', '23'])
         # libx264 can use all cores efficiently
@@ -352,7 +361,13 @@ def on_worker_process(data):
         cmd.extend(['-c:a', 'copy'])
     else:
         audio_bitrate = settings.get_setting('audio_bitrate')
+        audio_channels = settings.get_setting('audio_channels')
         cmd.extend(['-c:a', audio_codec, '-b:a', audio_bitrate])
+        if audio_channels:
+            cmd.extend(['-ac', audio_channels])
+    
+    # Add movflags for better streaming/playback support
+    cmd.extend(['-movflags', '+faststart'])
     
     # Add output
     cmd.extend(['-y', file_out])

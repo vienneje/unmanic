@@ -1,3 +1,14 @@
+2.1.8:
+- Enhanced H.265/HEVC encoding quality with optimized parameters
+- Changed default mode from cpu_only to auto (prefer GPU, fallback to CPU)
+- Increased default bitrate: 4M average, 6M max (better quality)
+- Added VBR (Variable Bitrate) rate control mode for VAAPI
+- Lowered QP from 23 to 20 for higher quality VAAPI encoding
+- Added HEVC profile/level specification (main profile, level 5.1)
+- Improved audio: 192k bitrate with stereo output (-ac 2)
+- Added -movflags +faststart for better streaming/playback support
+- Settings now match optimized production encoding standards
+
 2.1.7:
 - Removed custom progress parser to use Unmanic's built-in FFmpeg handler
 - Unmanic's default progress detection provides better percentage and ETC
