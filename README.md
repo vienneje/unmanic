@@ -97,11 +97,11 @@ The Docker container (`viennej/unmanic-amd`) includes the following optimization
 - Package: `jellyfin-ffmpeg7`
 - Provides enhanced VAAPI and AMF encoder support
 
-#### 2. **LLVM 18 Compiler Infrastructure**
-- Modern LLVM version for improved AMD GPU driver support
-- Better code generation for AMD RDNA architectures
+#### 2. **LLVM 21 Compiler Infrastructure**
+- Latest LLVM version (21.1.3) for optimal AMD GPU driver support
+- Enhanced code generation for AMD RDNA architectures
 - Repository: `https://apt.llvm.org/jammy/`
-- Packages: `llvm-18`, `llvm-18-dev`, `llvm-18-runtime`
+- Packages: `llvm-21`, `llvm-21-dev`, `llvm-21-runtime`, `llvm-21-tools`
 
 #### 3. **Mesa Drivers & VAAPI Libraries**
 - `mesa-va-drivers` - Video Acceleration API drivers for AMD GPUs
@@ -251,7 +251,7 @@ Since Unmanic can be used for running any commands, you will need to ensure that
 
 **Additional AMD-specific dependencies** (included in Docker image):
  - Jellyfin FFmpeg 7
- - LLVM 18
+ - LLVM 21.1.3
  - Mesa VA-API drivers
  - pciutils (for GPU detection)ose commands are also installed on your system.
 
