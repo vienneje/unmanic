@@ -33,7 +33,53 @@ docker pull viennej/unmanic-amd:v2.1.8
 - `latest` - Latest stable build with AMD optimizations
 - `latest-enhanced` - Same as latest, includes Jellyfin FFmpeg 7
 - `v2.1.8` - Latest version with optimized HEVC encoding
-- `ffmpeg7` - FFmpeg 7 base imagesh5/unmanic)
+- `ffmpeg7` - FFmpeg 7 base image
+
+## 🚀 Quick Start Guide
+
+### 1. Pull and Run the Container
+
+```bash
+docker run -d \
+  --name=unmanic \
+  -e PUID=1000 -e PGID=1000 -e TZ=Europe/Paris \
+  -p 8888:8888 \
+  -v /path/to/config:/config \
+  -v /path/to/library:/library \
+  -v /path/to/cache:/tmp/unmanic \
+  --device=/dev/dri:/dev/dri \
+  viennej/unmanic-amd:latest
+```
+
+### 2. Install the AMD Transcode Plugin
+
+After the container starts, access the web UI at `http://your-server:8888`
+
+**Option A - Upload Plugin Zip (Recommended):**
+1. Download: [`transcode_amd_v2-2.1.8.zip`](https://github.com/vienneje/unmanic/raw/master/transcode_amd_v2-2.1.8.zip)
+2. In Unmanic UI: Settings → Plugins → Install Plugin
+3. Upload the zip file
+4. Enable the plugin
+
+**Option B - Install from Repository:**
+1. Settings → Plugins → Plugin Repositories
+2. Click "Refresh Repositories" (may require internet connection)
+3. Go to Available Plugins
+4. Search for "Transcode AMD v2"
+5. Click Install
+
+### 3. Add Plugin to Library Flow
+
+1. Settings → Libraries
+2. Select your library (Movies/TV Shows)
+3. Go to "Plugin Flow" tab
+4. Click "Add Plugin" → Select "Transcode AMD v2"
+5. Configure settings (mode: auto, codec: hevc, etc.)
+6. Save
+
+### 4. Start Transcoding
+
+The plugin will automatically process files based on your library scan schedule or when new files are added.sh5/unmanic)
 
 
 
