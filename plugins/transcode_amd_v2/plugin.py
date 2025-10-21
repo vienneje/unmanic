@@ -320,8 +320,14 @@ class FFmpegProgressParser:
             self.proc_registered = True
             # Call default parser to register PID and start time with worker monitor
             if self.default_parser is not None:
-                self.default_parser(None, pid=pid, proc_start_time=proc_start_time)
-                logger.debug(f"Registered PID {pid} and start time with worker monitor")
+                logger.debug(f"Calling default parser with pid={pid}, proc_start_time={proc_start_time}")
+                try:
+                    self.default_parser(None, pid=pid, proc_start_time=proc_start_time)
+                    logger.info(f"Successfully registered PID {pid} and start time with worker monitor")
+                except Exception as e:
+                    logger.error(f"Failed to call default parser: {e}")
+            else:
+                logger.warning("No default parser available - elapsed time tracking will not work!")
             return {
                 'percent': 0,
                 'paused': False,

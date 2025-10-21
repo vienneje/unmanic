@@ -210,13 +210,7 @@ class WorkerSubprocessMonitor(threading.Thread):
                 except psutil.NoSuchProcess:
                     pass
 
-            # Final wait to reap
-            psutil.wait_procs(alive, timeout=3, callback=self.__log_proc_terminated)
-
-        except Exception:
-            self.logger.exception("Exception in __terminate_proc_tree()")
-
-    def get_subprocess_elapsed(self):
+            def get_subprocess_elapsed(self):
         try:
             subprocess_elapsed = 0
             if self.subprocess is not None:
@@ -224,10 +218,18 @@ class WorkerSubprocessMonitor(threading.Thread):
                 now = int(time.time())
                 # Get the total running time (including time being paused)
                 total_run_time = int(now - self.subprocess_start_time)
-                # Get the time when we started being paused
-                pause_duration = int(now - self.subprocess_pause_time)
+                # Calculate pause duration only if the subprocess has been paused
+                # If subprocess_pause_time is 0, the subprocess has never been paused
+                if self.subprocess_pause_time > 0:
+                    pause_duration = int(now - self.subprocess_pause_time)
+                else:
+                    pause_duration = 0
                 # Calculate elapsed time of the subprocess subtracting the pause duration
                 subprocess_elapsed = int(total_run_time - pause_duration)
+            return subprocess_elapsed
+        except Exception:
+            self.logger.exception("Exception in get_subprocess_elapsed()")
+            return 0            subprocess_elapsed = int(total_run_time - pause_duration)
             return subprocess_elapsed
         except Exception:
             self.logger.exception("Exception in get_subprocess_elapsed()")

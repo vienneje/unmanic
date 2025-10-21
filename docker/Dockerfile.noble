@@ -122,6 +122,10 @@ RUN \
         && echo 'exec s6-setuidgid root unmanic' >> /etc/services.d/unmanic/run \
         && chmod +x /etc/services.d/unmanic/run \
     && \
+    echo "**** Apply critical bugfix for elapsed time calculation ****" \
+        && sed -i '228,229d' /usr/local/lib/python3.12/dist-packages/unmanic/libs/workers.py \
+        && sed -i '227 a\                # Calculate pause duration only if the subprocess has been paused\n                # If subprocess_pause_time is 0, the subprocess has never been paused\n                if self.subprocess_pause_time > 0:\n                    pause_duration = int(now - self.subprocess_pause_time)\n                else:\n                    pause_duration = 0' /usr/local/lib/python3.12/dist-packages/unmanic/libs/workers.py \
+    && \
     echo "**** Cleanup ****" \
         && apt-get clean \
         && rm -rf \
