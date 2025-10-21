@@ -285,10 +285,11 @@ def get_video_duration(file_path):
 class FFmpegProgressParser:
     """Parse FFmpeg progress output to calculate completion percentage"""
     
-    def __init__(self, total_duration_seconds):
+    def __init__(self, total_duration_seconds, default_parser=None):
         self.total_duration = total_duration_seconds
         self.current_percent = 0
         self.proc_registered = False
+        self.default_parser = default_parser  # Unmanic's default parser to handle pid/proc_start_time
     
     def parse(self, line_text, pid=None, proc_start_time=None, unset=False):
         """
@@ -305,6 +306,9 @@ class FFmpegProgressParser:
         """
         # Handle process unregistration (completion)
         if unset:
+            # Call default parser to unregister the process
+            if self.default_parser is not None:
+                self.default_parser(None, unset=True)
             return {
                 'percent': 100,
                 'paused': False,
@@ -314,6 +318,10 @@ class FFmpegProgressParser:
         # Handle process registration (initial call with pid)
         if pid is not None and not self.proc_registered:
             self.proc_registered = True
+            # Call default parser to register PID and start time with worker monitor
+            if self.default_parser is not None:
+                self.default_parser(None, pid=pid, proc_start_time=proc_start_time)
+                logger.debug(f"Registered PID {pid} and start time with worker monitor")
             return {
                 'percent': 0,
                 'paused': False,
@@ -339,6 +347,7 @@ class FFmpegProgressParser:
         
         # Return percent as integer for ETC calculation
         # Note: Unmanic's get_subprocess_stats() will convert to string
+        # The worker monitor tracks elapsed time automatically via set_subprocess_start_time
         return {
             'percent': self.current_percent,
             'paused': False,
@@ -521,7 +530,9 @@ def on_worker_process(data):
     
     # Set up custom FFmpeg progress parser for accurate progress tracking and ETC
     if video_duration > 0:
-        progress_parser = FFmpegProgressParser(video_duration)
+        # Get the default parser from data (set by Unmanic to handle pid/start_time registration)
+        default_parser = data.get('command_progress_parser')
+        progress_parser = FFmpegProgressParser(video_duration, default_parser)
         data['command_progress_parser'] = progress_parser.parse
         logger.info("FFmpeg progress parser enabled - progress bar and ETC will be available")
     else:

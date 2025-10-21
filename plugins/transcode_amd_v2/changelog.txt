@@ -1,3 +1,12 @@
+2.3.1:
+- CRITICAL FIX: ETC (Estimated Time to Completion) now works! 🎉
+- Progress parser now wraps Unmanic's default parser for proper registration
+- Delegates PID and start_time registration to default parser
+- Worker monitor now tracks elapsed time correctly
+- ETC display in frontend now has all required data (percent + elapsed)
+- Progress bar AND ETC both working simultaneously
+- Clear browser cache after upgrade: Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+
 2.3.0:
 - CRITICAL: Added on_library_management_file_test() function
 - Files are now properly detected during library scans
