@@ -264,6 +264,86 @@ def detect_source_codec(file_path):
     return 'h264'
 
 
+def get_video_duration(file_path):
+    """Get video duration in seconds using ffprobe"""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'default=noprint_wrappers=1:nokey=1', file_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            duration_str = result.stdout.strip()
+            if duration_str and duration_str != 'N/A':
+                return float(duration_str)
+    except Exception as e:
+        logger.debug(f"Error getting video duration: {e}")
+    
+    return 0
+
+
+class FFmpegProgressParser:
+    """Parse FFmpeg progress output to calculate completion percentage"""
+    
+    def __init__(self, total_duration_seconds):
+        self.total_duration = total_duration_seconds
+        self.current_percent = 0
+        self.proc_registered = False
+    
+    def parse(self, line_text, pid=None, proc_start_time=None, unset=False):
+        """
+        Parse FFmpeg progress output.
+        
+        Args:
+            line_text: FFmpeg output line
+            pid: Process ID (for initial registration)
+            proc_start_time: Process start time (for initial registration)
+            unset: If True, unregister the process (it's completed)
+        
+        Returns:
+            Dict with 'percent', 'paused', 'killed' keys
+        """
+        # Handle process unregistration (completion)
+        if unset:
+            return {
+                'percent': 100,
+                'paused': False,
+                'killed': False
+            }
+        
+        # Handle process registration (initial call with pid)
+        if pid is not None and not self.proc_registered:
+            self.proc_registered = True
+            return {
+                'percent': 0,
+                'paused': False,
+                'killed': False
+            }
+        
+        # Parse FFmpeg output for time information
+        # Example: "frame=  123 fps= 30 time=00:01:23.45 bitrate=1234.5kbits/s speed=1.02x"
+        if line_text and self.total_duration > 0:
+            # Look for time= in the output (format: HH:MM:SS.MS or SS.MS)
+            time_match = re.search(r'time=(\d+):(\d+):(\d+)\.(\d+)', str(line_text))
+            if time_match:
+                hours = int(time_match.group(1))
+                minutes = int(time_match.group(2))
+                seconds = int(time_match.group(3))
+                centiseconds = int(time_match.group(4))
+                
+                current_seconds = hours * 3600 + minutes * 60 + seconds + centiseconds / 100.0
+                # Cap at 99% until actually complete (prevents showing 100% too early)
+                self.current_percent = min(99, int((current_seconds / self.total_duration) * 100))
+                
+                logger.debug(f"FFmpeg progress: {current_seconds:.2f}s / {self.total_duration:.2f}s = {self.current_percent}%")
+        
+        return {
+            'percent': self.current_percent,
+            'paused': False,
+            'killed': False
+        }
+
+
 def on_worker_process(data):
     """
     Runner function - Transcode video with AMD hardware acceleration
@@ -290,6 +370,13 @@ def on_worker_process(data):
     if not file_in or not file_out:
         logger.error("Missing input or output file")
         return data
+    
+    # Get video duration for progress tracking
+    video_duration = get_video_duration(file_in)
+    if video_duration > 0:
+        logger.info(f"Video duration: {video_duration:.2f} seconds ({video_duration/60:.2f} minutes)")
+    else:
+        logger.warning("Could not determine video duration - progress tracking may be limited")
     
     # Detect hardware
     gpu_info = detect_amd_gpu()
@@ -375,12 +462,19 @@ def on_worker_process(data):
     # Set command
     data['exec_command'] = cmd
     
-    # Note: Unmanic has built-in FFmpeg progress detection
-    # We don't set a custom command_progress_parser to let Unmanic's default handler work
-    # This provides better progress tracking with percentage and ETC
+    # Set up custom FFmpeg progress parser for accurate progress tracking and ETC
+    if video_duration > 0:
+        progress_parser = FFmpegProgressParser(video_duration)
+        data['command_progress_parser'] = progress_parser.parse
+        logger.info("FFmpeg progress parser enabled - progress bar and ETC will be available")
+    else:
+        # Fallback: let Unmanic use default parser (limited functionality)
+        logger.warning("Using default progress parser - progress tracking may be limited")
     
     # Log to worker
     if 'worker_log' in data:
         data['worker_log'].append(f"[AMD] Mode: {mode}, Encoder: {encoder} ({encoder_type})")
+        if video_duration > 0:
+            data['worker_log'].append(f"[AMD] Video duration: {video_duration/60:.2f} minutes")
     
     return data

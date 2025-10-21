@@ -1,3 +1,14 @@
+2.1.9:
+- Implemented custom FFmpeg progress parser for accurate progress tracking
+- Added get_video_duration() function using ffprobe to determine video length
+- Added FFmpegProgressParser class to parse FFmpeg time= output
+- Progress bar now shows accurate percentage (0-100%)
+- ETC (Estimated Time to Completion) now calculated and displayed correctly
+- Parses FFmpeg's "time=HH:MM:SS.MS" output for precise progress
+- Fixes "progress bar empty" and "ETC is empty" issues
+- Matches progress tracking approach of official video_transcoder plugin
+- Progress updates in real-time during encoding
+
 2.1.8:
 - Enhanced H.265/HEVC encoding quality with optimized parameters
 - Changed default mode from cpu_only to auto (prefer GPU, fallback to CPU)

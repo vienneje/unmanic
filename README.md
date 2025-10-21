@@ -26,13 +26,13 @@ Unmanic - Library Optimiser (AMD Ryzen AI Enhanced)
 docker pull viennej/unmanic-amd:latest
 
 # Or use a specific version
-docker pull viennej/unmanic-amd:v2.1.8
+docker pull viennej/unmanic-amd:v2.1.9
 ```
 
 **Available Tags:**
 - `latest` - Latest stable build with AMD optimizations (Ubuntu 22.04)
 - `latest-enhanced` - Same as latest, includes Jellyfin FFmpeg 7
-- `v2.1.8` - Latest version with optimized HEVC encoding
+- `v2.1.9` - Latest version with progress tracking and optimized HEVC encoding
 - `noble` / `ubuntu24.04` - Ubuntu 24.04 LTS with Mesa 25.0.7 (Recommended for Ryzen AI)
 - `ffmpeg7` - FFmpeg 7 base image
 
@@ -74,7 +74,7 @@ docker run -d \
 After the container starts, access the web UI at `http://your-server:8888`
 
 **Option A - Upload Plugin Zip (Recommended):**
-1. Download: [`transcode_amd_v2-2.1.8.zip`](https://github.com/vienneje/unmanic/raw/master/transcode_amd_v2-2.1.8.zip)
+1. Download: [`transcode_amd_v2-2.1.9.zip`](https://github.com/vienneje/unmanic/raw/master/plugins/transcode_amd_v2-2.1.9.zip)
 2. In Unmanic UI: Settings → Plugins → Install Plugin
 3. Upload the zip file
 4. Enable the plugin
@@ -206,12 +206,13 @@ A comprehensive plugin specifically designed for AMD hardware acceleration.
 - ✅ **H.264/HEVC Codecs**: Full support for both codecs
 - ✅ **Quality Presets**: Speed, Balanced, Quality modes
 - ✅ **Automatic Hardware Detection**: Detects AMD CPUs and GPUs
-- ✅ **Progress Tracking**: Real-time progress, percentage, and ETC
+- ✅ **Real-time Progress Tracking** (v2.1.9): Accurate progress bar, percentage, and ETC
+- ✅ **FFmpeg Progress Parser**: Parses encoding time for precise completion estimates
 - ✅ **Auto-dependency Installation**: Installs `pciutils` if missing
 
 **Plugin File:** [`plugins/transcode_amd_v2/plugin.py`](plugins/transcode_amd_v2/plugin.py)
 
-**Optimized HEVC Encoding Parameters (v2.1.8):**
+**Optimized HEVC Encoding Parameters (v2.1.9):**
 ```bash
 ffmpeg -hide_banner -loglevel info \
   -vaapi_device /dev/dri/renderD128 \
@@ -233,9 +234,16 @@ ffmpeg -hide_banner -loglevel info \
 - **+faststart**: Optimized for streaming (moves metadata to file start)
 
 **Installation:**
-1. Download [`transcode_amd_v2-2.1.8.zip`](transcode_amd_v2-2.1.8.zip)
+1. Download [`transcode_amd_v2-2.1.9.zip`](plugins/transcode_amd_v2-2.1.9.zip)
 2. Install via Unmanic Web UI: Plugins → Install from file
 3. Add to library flow: Libraries → Select Library → Plugin Flow → Add Plugin
+
+**What's New in v2.1.9:**
+- 🎯 **Fixed Progress Tracking**: Progress bar now shows accurate 0-100% completion
+- 📊 **ETC Display**: Estimated Time to Completion now calculated and shown in real-time
+- ⏱️ **FFmpeg Time Parser**: Parses `time=HH:MM:SS` output for precise progress
+- 🔄 **Real-time Updates**: Progress updates every 1-2 seconds during encoding
+- ✅ **Feature Parity**: Matches official video_transcoder plugin's progress tracking quality
 
 ### Performance Benchmarks
 
