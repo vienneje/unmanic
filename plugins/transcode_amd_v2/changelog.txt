@@ -1,3 +1,11 @@
+2.3.0:
+- CRITICAL: Added on_library_management_file_test() function
+- Files are now properly detected during library scans
+- Video files are checked and added to pending tasks
+- Skips files already in target codec (unless target_codec=copy)
+- Supports all common video formats (mkv, mp4, avi, mov, etc.)
+- This fixes the "no files in pending after scan" issue
+
 2.2.1:
 - Fixed ETC calculation by returning percent as integer (not string)
 - Frontend ETC calculation requires numeric percent value

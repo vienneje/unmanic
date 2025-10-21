@@ -346,6 +346,61 @@ class FFmpegProgressParser:
         }
 
 
+def on_library_management_file_test(data):
+    """
+    Runner function - Determines if a file should be added to the pending tasks list.
+    
+    The 'data' object argument includes:
+        library_id                      - The library that the current task is associated with
+        path                            - String containing the full path to the file being tested.
+        issues                          - List of currently found issues for not processing the file.
+        add_file_to_pending_tasks       - Boolean, is the file currently marked to be added to the queue.
+        priority_score                  - Integer, additional score for task queue position.
+        shared_info                     - Dictionary, information from previous plugin runners.
+    
+    :param data:
+    :return:
+    """
+    # Get the path to the file
+    abspath = data.get('path')
+    
+    # Get settings
+    settings = Settings(library_id=data.get('library_id'))
+    target_codec = settings.get_setting('target_codec')
+    
+    # Only process video files
+    if not abspath:
+        return data
+    
+    # Check if it's a video file based on extension
+    video_extensions = ['.mkv', '.mp4', '.avi', '.mov', '.m4v', '.wmv', '.flv', '.webm', '.mpg', '.mpeg', '.m2ts', '.ts']
+    file_extension = os.path.splitext(abspath)[1].lower()
+    
+    if file_extension not in video_extensions:
+        # Not a video file, skip
+        return data
+    
+    # If target codec is 'copy', we still want to process all videos
+    # Otherwise, check if the file is already in the target codec
+    if target_codec != 'copy':
+        try:
+            current_codec = detect_source_codec(abspath)
+            
+            # If file is already in target codec, skip it
+            if current_codec == target_codec:
+                logger.debug(f"File '{abspath}' is already {target_codec}, skipping")
+                return data
+        except Exception as e:
+            logger.debug(f"Error detecting codec for '{abspath}': {e}")
+            # If we can't detect codec, process it anyway to be safe
+    
+    # Mark this file to be added to the pending tasks
+    data['add_file_to_pending_tasks'] = True
+    logger.debug(f"File '{abspath}' should be added to pending tasks")
+    
+    return data
+
+
 def on_worker_process(data):
     """
     Runner function - Transcode video with AMD hardware acceleration
