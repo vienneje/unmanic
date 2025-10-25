@@ -1,3 +1,10 @@
+2.7.3:
+🐛 CRITICAL FIX: Easy Mode showing duplicate "Hardware Selection" label
+- Fixed: easy_quality was displaying with wrong label (Hardware Selection instead of Quality Preset)
+- Root cause: Visibility functions were hardcoded to copy "easy_hardware" form_settings
+- Now correctly shows: Hardware Selection + Quality Preset + Output Container
+- Made visibility functions accept setting_key parameter for correct label inheritance
+
 2.7.2:
 🐛 FIX: Output container selection now properly hidden in Expert mode
 - Fixed: Output container dropdown was showing in all modes

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    transcode_amd v2.7.2
+    transcode_amd v2.7.3
 
     AMD Hardware Acceleration Transcoding Plugin - SMART EDITION
 
@@ -357,11 +357,11 @@ class Settings(PluginSettings):
         # Update form_settings with visibility rules
         self.form_settings = {
             **self.form_settings,  # Keep existing form_settings
-            "easy_hardware": self.__set_easy_mode_visibility(),
-            "easy_quality": self.__set_easy_mode_visibility(),
+            "easy_hardware": self.__set_easy_mode_visibility("easy_hardware"),
+            "easy_quality": self.__set_easy_mode_visibility("easy_quality"),
             "output_container": self.__set_output_container_visibility(),
-            "expert_template": self.__set_expert_mode_visibility(),
-            "expert_command": self.__set_expert_mode_visibility(),
+            "expert_template": self.__set_expert_mode_visibility("expert_template"),
+            "expert_command": self.__set_expert_mode_visibility("expert_command"),
             # Hide all advanced settings in Easy/Expert modes
             "use_preset": self.__set_advanced_mode_visibility(),
             "preset_profile": self.__set_advanced_mode_visibility(),
@@ -391,9 +391,9 @@ class Settings(PluginSettings):
             "skip_10bit_files": self.__set_advanced_mode_visibility(),
         }
 
-    def __set_easy_mode_visibility(self):
-        """Show easy_hardware only in Easy mode"""
-        values = {**self.form_settings.get("easy_hardware", {})}
+    def __set_easy_mode_visibility(self, setting_key):
+        """Show Easy mode settings only in Easy mode"""
+        values = {**self.form_settings.get(setting_key, {})}
         config_mode = self.get_setting('config_mode')
         if config_mode != 'easy':
             values["display"] = 'hidden'
@@ -407,9 +407,9 @@ class Settings(PluginSettings):
             values["display"] = 'hidden'
         return values
 
-    def __set_expert_mode_visibility(self):
-        """Show expert_command only in Expert mode"""
-        values = {**self.form_settings.get("expert_command", {})}
+    def __set_expert_mode_visibility(self, setting_key):
+        """Show Expert mode settings only in Expert mode"""
+        values = {**self.form_settings.get(setting_key, {})}
         config_mode = self.get_setting('config_mode')
         if config_mode != 'expert':
             values["display"] = 'hidden'
