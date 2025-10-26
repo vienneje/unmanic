@@ -1,3 +1,43 @@
+2.7.8:
+🐛 CRITICAL FIX: Enhanced bitrate detection with fallback calculation
+- Fixed: detect_source_bitrate() now calculates from file size/duration when stream bitrate unavailable
+- Fixed: Some files (like remuxes) don't report stream bitrate in ffprobe
+- Added: Fallback calculation using (file_size * 8) / duration * 0.7 for video bitrate
+- Result: Bitrate cap now applies correctly to all files (not just those with stream metadata)
+- Prevents HEVC→HEVC transcodes from bloating without cap
+
+2.7.7:
+🐛 CRITICAL FIX: Prevent constant quality mode from creating bloated files
+- Added: Automatic bitrate cap at 1.5x source bitrate for CRF and VBR modes
+- Fixed: GPU encoding with constant quality could exceed source bitrate by 2-3x
+- Added: detect_source_bitrate() function to read video-only bitrate from source
+- Example: 4Mbps H.264 source → capped at 6Mbps HEVC output (prevents 10+ Mbps bloat)
+- Protects against "Reject File if Larger than Original" failures
+- Both CRF and VBR modes now respect source bitrate limits
+
+2.7.6:
+✨ ENHANCEMENT: Skip efficiently-encoded files to save processing time
+- Fixed: is_already_optimal() now correctly detects video-only bitrate (not total file bitrate)
+- Enhancement: Skip files already encoded at or below optimal bitrate for their resolution
+- Prevents re-encoding well-compressed 4K HEVC files that would result in larger output
+- Example: 4K HEVC at 2Mbps (efficient) won't be re-encoded at 15Mbps (wasteful)
+- Saves hours of processing time on already-optimized content
+
+2.7.5:
+🐛 CRITICAL FIX: Completed tasks not appearing in data panels
+- Fixed: file_out path not being updated in data dict when changing output container
+- Root cause: v2.7.0 output container feature modified local file_out but never wrote back to data['file_out']
+- Result: Unmanic couldn't find completed files at expected path
+- All completed transcodes now properly appear in history/stats panels
+
+2.7.4:
+🐛 FIX: AAC multi-channel audio encoding issues
+- Fixed: "Unsupported channel layout" error with 5.1/7.1 AAC audio
+- Changed: Easy Mode now uses 'copy' for audio codec (most sources already have AAC)
+- Added: Proper channel layout handling for Advanced mode AAC re-encoding
+- Prevents failures when transcoding files with multi-channel AAC audio
+- Audio copying in Easy Mode avoids unnecessary re-encoding and quality loss
+
 2.7.3:
 🐛 CRITICAL FIX: Easy Mode showing duplicate "Hardware Selection" label
 - Fixed: easy_quality was displaying with wrong label (Hardware Selection instead of Quality Preset)

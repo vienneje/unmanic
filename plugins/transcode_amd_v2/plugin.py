@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    transcode_amd v2.7.3
+    transcode_amd v2.7.8
 
     AMD Hardware Acceleration Transcoding Plugin - SMART EDITION
 
@@ -639,6 +639,52 @@ def detect_video_bit_depth(file_path):
     return 8
 
 
+def detect_source_bitrate(file_path):
+    """
+    Detect video-only bitrate from source file
+    Returns bitrate in bits per second, or 0 if unable to detect
+
+    v2.7.7: Added to prevent CRF mode from exceeding source bitrate
+    v2.7.8: Enhanced to calculate from file size/duration when stream bitrate unavailable
+    """
+    try:
+        # First try direct bitrate from stream
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+             '-show_entries', 'stream=bit_rate', '-of', 'default=noprint_wrappers=1:nokey=1',
+             file_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            bitrate = int(result.stdout.strip())
+            if bitrate > 0:
+                return bitrate
+
+        # If stream bitrate not available, calculate from file size and duration
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error',
+             '-show_entries', 'format=size,duration', '-of', 'json',
+             file_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            format_info = data.get('format', {})
+            file_size = int(format_info.get('size', 0))
+            duration = float(format_info.get('duration', 0))
+
+            if file_size > 0 and duration > 0:
+                # Calculate total bitrate and assume 70% is video
+                total_bitrate = (file_size * 8) / duration
+                video_bitrate = int(total_bitrate * 0.7)
+                return video_bitrate
+
+    except Exception as e:
+        logger.debug(f"Error detecting source bitrate: {e}")
+
+    return 0
+
+
 def get_resolution(file_path):
     """Get video resolution (width, height)"""
     try:
@@ -871,7 +917,7 @@ def get_effective_settings(settings_obj):
         easy_defaults = {
             'encoding_mode': hardware_map.get(easy_hardware, 'auto'),
             'target_codec': 'hevc',
-            'audio_codec': 'aac',
+            'audio_codec': 'copy',  # Copy audio to avoid multi-channel encoding issues
             'audio_bitrate': '192k',
             'audio_mode': 'all',
             'copy_subtitles': True,
@@ -1136,7 +1182,7 @@ def is_already_optimal(file_path, settings):
             'ffprobe', '-v', 'error',
             '-select_streams', 'v:0',
             '-show_entries', 'stream=codec_name,bit_rate,width,height,pix_fmt',
-            '-show_entries', 'format=size,bit_rate',
+            '-show_entries', 'format=size,bit_rate,duration',
             '-of', 'json',
             file_path
         ]
@@ -1158,10 +1204,24 @@ def is_already_optimal(file_path, settings):
 
         # Get bitrates
         try:
-            # Try stream bitrate first, fallback to format bitrate
+            # v2.7.6: CRITICAL FIX - Only use video stream bitrate, NOT format bitrate
+            # Format bitrate includes audio/subtitles which can be misleading
             current_bitrate = int(video_stream.get('bit_rate', 0))
+
+            # If video stream bitrate is not available, calculate from file
             if current_bitrate == 0:
-                current_bitrate = int(format_info.get('bit_rate', 0))
+                # Get file size and duration to calculate average bitrate
+                file_size = int(format_info.get('size', 0))
+                duration_str = format_info.get('duration', '0')
+                try:
+                    duration = float(duration_str)
+                    if duration > 0 and file_size > 0:
+                        # Calculate video-only bitrate (assume video is 70% of total file)
+                        # This is a heuristic when stream bitrate is unavailable
+                        total_bitrate = (file_size * 8) / duration
+                        current_bitrate = int(total_bitrate * 0.7)
+                except (ValueError, ZeroDivisionError):
+                    pass
 
             if current_bitrate == 0:
                 # Can't determine bitrate, allow transcode
@@ -1175,12 +1235,18 @@ def is_already_optimal(file_path, settings):
             # Calculate optimal bitrate for this resolution
             optimal_bitrate = get_optimal_bitrate_for_resolution(resolution, target_codec)
 
-            # If current bitrate is within 120% of optimal, skip
-            # (already well compressed)
+            # v2.7.6: Enhanced logic to skip well-encoded files
+            # Case 1: File is already at or below optimal bitrate (efficiently encoded)
+            # Case 2: File is slightly above optimal (within 120%) but still good
             if current_bitrate <= optimal_bitrate * 1.2:
                 current_mbps = current_bitrate / 1_000_000
                 optimal_mbps = optimal_bitrate / 1_000_000
-                reason = f"Already {target_codec} at {current_mbps:.1f}Mbps (optimal: {optimal_mbps:.1f}Mbps)"
+
+                if current_bitrate <= optimal_bitrate:
+                    reason = f"Already efficiently encoded: {target_codec} at {current_mbps:.1f}Mbps (optimal: {optimal_mbps:.1f}Mbps)"
+                else:
+                    reason = f"Already well compressed: {target_codec} at {current_mbps:.1f}Mbps (optimal: {optimal_mbps:.1f}Mbps)"
+
                 return True, reason
 
         except (ValueError, KeyError):
@@ -1363,6 +1429,8 @@ def on_worker_process(data):
         import os
         base = os.path.splitext(file_out)[0]
         file_out = f"{base}.{output_container}"
+        # CRITICAL: Update data dict so Unmanic knows the correct output path
+        data['file_out'] = file_out
 
     # EXPERT MODE: Use custom FFmpeg command
     config_mode = settings_obj.get_setting('config_mode')
@@ -1513,9 +1581,27 @@ def on_worker_process(data):
             crf = int(settings.get_setting('crf_value'))
             quality = max(0, min(51, crf))
             cmd.extend(['-global_quality', str(quality)])
+
+            # v2.7.7: Add bitrate cap to prevent CRF from exceeding source bitrate
+            source_bitrate = detect_source_bitrate(file_in)
+            if source_bitrate > 0:
+                # Cap at 1.5x source bitrate to prevent file bloat
+                max_bitrate = int(source_bitrate * 1.5)
+                max_bitrate_str = f"{max_bitrate}"
+                cmd.extend(['-maxrate', max_bitrate_str])
+                logger.info(f"CRF mode: Capping bitrate at {max_bitrate / 1_000_000:.1f}Mbps (1.5x source)")
         else:
             cmd.extend(['-rc_mode', 'VBR'])
             cmd.extend(['-qp', '20'])
+
+            # v2.7.7: Add bitrate cap for VBR mode too
+            source_bitrate = detect_source_bitrate(file_in)
+            if source_bitrate > 0:
+                # Cap at 1.5x source bitrate to prevent file bloat
+                max_bitrate = int(source_bitrate * 1.5)
+                max_bitrate_str = f"{max_bitrate}"
+                cmd.extend(['-maxrate', max_bitrate_str])
+                logger.info(f"VBR mode: Capping bitrate at {max_bitrate / 1_000_000:.1f}Mbps (1.5x source)")
 
         # Profile and level
         if encoder == 'hevc_vaapi':
@@ -1619,10 +1705,19 @@ def on_worker_process(data):
             cmd.extend(['-c:a', 'copy'])
         else:
             audio_bitrate = settings.get_setting('audio_bitrate')
-            cmd.extend(['-c:a', audio_codec, '-b:a', audio_bitrate])
 
             if settings.get_setting('downmix_multichannel'):
-                cmd.extend(['-ac', '2'])
+                # Downmix to stereo
+                cmd.extend(['-c:a', audio_codec, '-ac', '2', '-b:a', audio_bitrate])
+            else:
+                # Use per-stream encoding to handle multi-channel properly
+                # For AAC with 5.1/multi-channel, use higher bitrate and specify channel layout
+                cmd.extend(['-c:a', audio_codec])
+                # Use filter to ensure proper channel layout for multi-channel audio
+                cmd.extend(['-b:a:0', audio_bitrate])  # Per-stream bitrate
+                # Add channel layout specification for AAC to avoid "Unsupported channel layout" error
+                if audio_codec == 'aac':
+                    cmd.extend(['-channel_layout:a', '0'])  # Auto-detect from input
 
     elif audio_mode == 'first':
         cmd.extend(['-map', '0:a:0'])
