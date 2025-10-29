@@ -192,6 +192,7 @@ class Settings(PluginSettings):
                 {"value": "fast", "label": "Fast - Quick encoding, larger files"},
                 {"value": "balanced", "label": "Balanced - Good quality/speed (recommended)"},
                 {"value": "quality", "label": "Quality - Best quality, slower"},
+                {"value": "av1_quality", "label": "AV1 Archive - Maximum compression, no quality loss"},
             ],
         },
         "output_container": {
@@ -897,18 +898,28 @@ def get_effective_settings(settings_obj):
                 'use_auto_bitrate': True,
                 'crf_value': '26',
                 'video_quality': 'speed',
+                'target_codec': 'hevc',
             },
             'balanced': {
                 'rate_control': 'vbr',
                 'use_auto_bitrate': True,
                 'crf_value': '23',
                 'video_quality': 'balanced',
+                'target_codec': 'hevc',
             },
             'quality': {
                 'rate_control': 'crf',
                 'use_auto_bitrate': False,
                 'crf_value': '20',
                 'video_quality': 'quality',
+                'target_codec': 'hevc',
+            },
+            'av1_quality': {
+                'rate_control': 'crf',
+                'use_auto_bitrate': False,
+                'crf_value': '18',  # High quality for AV1
+                'video_quality': 'quality',
+                'target_codec': 'av1',
             },
         }
 
@@ -916,7 +927,7 @@ def get_effective_settings(settings_obj):
 
         easy_defaults = {
             'encoding_mode': hardware_map.get(easy_hardware, 'auto'),
-            'target_codec': 'hevc',
+            'target_codec': quality_settings.get('target_codec', 'hevc'),
             'audio_codec': 'copy',  # Copy audio to avoid multi-channel encoding issues
             'audio_bitrate': '192k',
             'audio_mode': 'all',

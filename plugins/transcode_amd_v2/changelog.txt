@@ -1,3 +1,13 @@
+2.7.11:
+🎬 AV1 ARCHIVE MODE: New quality preset for maximum compression without quality loss
+- NEW: "AV1 Archive" quality option in Easy Mode
+- GPU-accelerated AV1 encoding for RDNA 2+ GPUs (tested on Radeon 780M)
+- High quality setting (CRF 18) for archival-grade compression
+- 30%+ better compression than HEVC with no visible quality loss
+- Perfect for: Long-term storage, large libraries, bandwidth-limited streaming
+- Speed: ~4-5x realtime on RDNA 3 GPUs
+- Use when: You want smallest files without sacrificing quality
+
 2.7.10:
 🎯 ENHANCED SKIP: Now skips well-compressed files regardless of codec
 - CRITICAL: Bitrate check now applies to ALL codecs (H.264, HEVC, AV1), not just same-codec

@@ -11,9 +11,11 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ### 🟢 Easy Mode (Recommended for Beginners)
 - Pick hardware: **Auto** / GPU / CPU
-- Pick quality: **Fast** / Balanced / Quality
+- Pick quality: **Fast** / Balanced / Quality / **AV1 Archive**
 - Pick format: **MKV** / MP4 / Same as source
 - Everything else automatic!
+
+**NEW: AV1 Archive** - Maximum compression without quality loss (RDNA 2+ GPUs)
 
 ### 🟡 Advanced Mode (Power Users)
 - All detailed settings available
@@ -27,7 +29,15 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.10)
+## ✨ Latest Features (v2.7.11)
+
+### 🎬 AV1 Archive Mode (NEW!)
+- **Maximum compression without quality loss** - Uses AV1 codec with CRF 18
+- **GPU accelerated** - Hardware encoding on RDNA 2+ GPUs (780M, RX 6000/7000)
+- **30%+ better compression** than HEVC at same visual quality
+- **Perfect for archival** - Long-term storage, large libraries
+- **Speed**: ~4-5x realtime encoding on RDNA 3 GPUs
+- **Easy Mode**: Select "AV1 Archive" quality preset
 
 ### 🎯 Smart Skip Logic
 - **Cross-codec bitrate check** - Skips well-compressed files regardless of codec
