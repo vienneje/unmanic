@@ -1,3 +1,11 @@
+2.7.15:
+⚖️ QUALITY ADJUSTMENT: Better compression for AV1 Archive mode
+- CHANGED: AV1 Archive CRF reduced from 18 to 22
+- Reason: CRF 18 was too high quality, often resulting in 0% size reduction
+- Impact: Better compression while maintaining excellent visual quality
+- Quality: CRF 22 AV1 ≈ CRF 20 HEVC (still archival-grade)
+- Result: More reliable space savings on already-compressed files
+
 2.7.14:
 🔧 AUTO-CROP FIX: Prevent encoding failures from too-small cropped resolutions
 - FIXED: Auto-crop can create resolutions below hardware encoder minimum (128x128)

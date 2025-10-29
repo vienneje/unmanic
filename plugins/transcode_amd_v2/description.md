@@ -29,7 +29,12 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.14)
+## ✨ Latest Features (v2.7.15)
+
+### ⚖️ Quality Adjustment (v2.7.15)
+- **IMPROVED**: AV1 Archive CRF changed from 18 to 22 for better compression
+- **Result**: More reliable space savings while maintaining excellent quality
+- **Quality**: CRF 22 AV1 still provides archival-grade visual quality
 
 ### 🔧 Auto-Crop Fix (v2.7.14)
 - **FIXED**: Crop detection creating resolutions too small for hardware encoder
@@ -47,13 +52,14 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 - **Impact**: Easy Mode, AV1 Archive, and custom settings now work properly
 - **Upgrade recommended** for all users with custom library settings
 
-### 🎬 AV1 Archive Mode (NEW!)
-- **Maximum compression without quality loss** - Uses AV1 codec with CRF 18
+### 🎬 AV1 Archive Mode (v2.7.15 - Optimized!)
+- **Excellent quality with better compression** - Uses AV1 codec with CRF 22
 - **GPU accelerated** - Hardware encoding on RDNA 2+ GPUs (780M, RX 6000/7000)
 - **30%+ better compression** than HEVC at same visual quality
 - **Perfect for archival** - Long-term storage, large libraries
 - **Speed**: ~4-5x realtime encoding on RDNA 3 GPUs
 - **Easy Mode**: Select "AV1 Archive" quality preset
+- **Updated**: CRF 22 provides better space savings while maintaining archival quality
 
 ### 🎯 Smart Skip Logic
 - **Cross-codec bitrate check** - Skips well-compressed files regardless of codec

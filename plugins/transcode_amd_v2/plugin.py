@@ -972,7 +972,7 @@ def get_effective_settings(settings_obj):
             'av1_quality': {
                 'rate_control': 'crf',
                 'use_auto_bitrate': False,
-                'crf_value': '18',  # High quality for AV1
+                'crf_value': '22',  # Balanced quality/compression for AV1
                 'video_quality': 'quality',
                 'target_codec': 'av1',
             },
