@@ -1,3 +1,21 @@
+2.7.10:
+🎯 ENHANCED SKIP: Now skips well-compressed files regardless of codec
+- CRITICAL: Bitrate check now applies to ALL codecs (H.264, HEVC, AV1), not just same-codec
+- Fixed: Well-compressed H.264 files (low bitrate) are now skipped instead of wastefully re-encoded
+- Example: H.264 at 2.1 Mbps (already below HEVC 4.0 Mbps target) won't be re-encoded
+- Logic: Skip if source bitrate ≤ 120% of target codec's optimal bitrate
+- Impact: Saves processing on already-efficient encodes from streaming services
+- Result: Eliminates 0% file size reduction transcodes
+
+2.7.9:
+✨ SMART SKIP: Codec efficiency hierarchy prevents wasteful transcoding
+- NEW: Skip AV1 files when targeting HEVC (AV1 is more efficient, no benefit to re-encode)
+- NEW: Codec efficiency ranking: AV1 (best) > HEVC > H.264 (least efficient)
+- Fixed: Plugin now respects codec efficiency and won't downgrade from better codec
+- Example: AV1-encoded Witcher episodes won't be re-encoded to HEVC anymore
+- Result: Saves hours of processing time on already-optimal modern encodes
+- Impact: Netflix/Amazon AV1 releases, Disney+ releases automatically skipped
+
 2.7.8:
 🐛 CRITICAL FIX: Enhanced bitrate detection with fallback calculation
 - Fixed: detect_source_bitrate() now calculates from file size/duration when stream bitrate unavailable

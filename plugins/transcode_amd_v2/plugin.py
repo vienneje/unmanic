@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    transcode_amd v2.7.8
+    transcode_amd v2.7.10
 
     AMD Hardware Acceleration Transcoding Plugin - SMART EDITION
 
@@ -1198,10 +1198,17 @@ def is_already_optimal(file_path, settings):
 
         current_codec = video_stream.get('codec_name', '').lower()
 
-        # Already target codec?
-        if current_codec != target_codec:
-            return False, None
+        # v2.7.9: Codec efficiency hierarchy (AV1 > HEVC > H.264)
+        # Skip if source codec is MORE efficient than target
+        codec_efficiency = {'av1': 3, 'hevc': 2, 'h265': 2, 'h264': 1, 'avc': 1}
+        current_efficiency = codec_efficiency.get(current_codec, 0)
+        target_efficiency = codec_efficiency.get(target_codec, 0)
 
+        if current_efficiency > target_efficiency:
+            return True, f"Source codec {current_codec} is more efficient than target {target_codec}, skipping"
+
+        # v2.7.9: Check if source is already well-compressed (regardless of codec)
+        # Skip transcoding files that are already at or below target bitrate
         # Get bitrates
         try:
             # v2.7.6: CRITICAL FIX - Only use video stream bitrate, NOT format bitrate
@@ -1235,22 +1242,26 @@ def is_already_optimal(file_path, settings):
             # Calculate optimal bitrate for this resolution
             optimal_bitrate = get_optimal_bitrate_for_resolution(resolution, target_codec)
 
-            # v2.7.6: Enhanced logic to skip well-encoded files
-            # Case 1: File is already at or below optimal bitrate (efficiently encoded)
-            # Case 2: File is slightly above optimal (within 120%) but still good
+            # v2.7.9: Enhanced logic to skip well-encoded files
+            # Skip if bitrate is already at or below target codec's optimal bitrate
+            # This prevents re-encoding already efficient H.264 files
             if current_bitrate <= optimal_bitrate * 1.2:
                 current_mbps = current_bitrate / 1_000_000
                 optimal_mbps = optimal_bitrate / 1_000_000
 
                 if current_bitrate <= optimal_bitrate:
-                    reason = f"Already efficiently encoded: {target_codec} at {current_mbps:.1f}Mbps (optimal: {optimal_mbps:.1f}Mbps)"
+                    reason = f"Already efficiently encoded: {current_codec} at {current_mbps:.1f}Mbps (target {target_codec}: {optimal_mbps:.1f}Mbps)"
                 else:
-                    reason = f"Already well compressed: {target_codec} at {current_mbps:.1f}Mbps (optimal: {optimal_mbps:.1f}Mbps)"
+                    reason = f"Already well compressed: {current_codec} at {current_mbps:.1f}Mbps (target {target_codec}: {optimal_mbps:.1f}Mbps)"
 
                 return True, reason
 
         except (ValueError, KeyError):
-            # Can't determine bitrate, allow transcode
+            # Can't determine bitrate, continue to check if already target codec
+            pass
+
+        # If bitrate check didn't skip, check if already target codec
+        if current_codec != target_codec:
             return False, None
 
         return False, None
