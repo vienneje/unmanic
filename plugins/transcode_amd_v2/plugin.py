@@ -857,9 +857,14 @@ def detect_crop(file_path, duration=10):
             most_common = Counter(matches).most_common(1)[0][0]
             w, h, x, y = most_common
 
+            # v2.7.14: Check minimum resolution for hardware encoders (128x128)
+            crop_w, crop_h = int(w), int(h)
+            if crop_w < 128 or crop_h < 128:
+                logger.warning(f"Crop resolution {crop_w}x{crop_h} too small for hardware encoder (min 128x128), skipping crop")
+                return None
+
             # Only return crop if significant (>5% cropped)
             orig_w, orig_h = get_resolution(file_path)
-            crop_h = int(h)
             if (orig_h - crop_h) / orig_h > 0.05:
                 return f"crop={w}:{h}:{x}:{y}"
 

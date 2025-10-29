@@ -29,7 +29,12 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.13)
+## ✨ Latest Features (v2.7.14)
+
+### 🔧 Auto-Crop Fix (v2.7.14)
+- **FIXED**: Crop detection creating resolutions too small for hardware encoder
+- **Minimum**: 128x128 resolution enforced for VAAPI/AMF encoders
+- **Result**: Files with extreme letterboxing now encode successfully
 
 ### 🔧 Codec Compatibility Fix (v2.7.13)
 - **FIXED**: MPEG-4/XVID encoding failures with VAAPI

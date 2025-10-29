@@ -1,3 +1,11 @@
+2.7.14:
+🔧 AUTO-CROP FIX: Prevent encoding failures from too-small cropped resolutions
+- FIXED: Auto-crop can create resolutions below hardware encoder minimum (128x128)
+- Added: Minimum resolution check before applying crop filter
+- Error prevented: "Hardware does not support encoding at size XxY"
+- Example: 720x300 cropped to 192x64 → Skip crop, encode at 720x300
+- Result: XVID files with extreme letterboxing now encode successfully
+
 2.7.13:
 🔧 CODEC COMPATIBILITY FIX: Support for MPEG-4/XVID and other legacy codecs
 - FIXED: MPEG-4 Part 2 (XVID, DivX) encoding failures
