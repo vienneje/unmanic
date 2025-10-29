@@ -29,7 +29,13 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.11)
+## ✨ Latest Features (v2.7.12)
+
+### 🐛 Critical Bug Fix (v2.7.12)
+- **FIXED**: Library-specific settings now correctly applied during encoding
+- **Issue**: Worker process wasn't loading per-library configurations
+- **Impact**: Easy Mode, AV1 Archive, and custom settings now work properly
+- **Upgrade recommended** for all users with custom library settings
 
 ### 🎬 AV1 Archive Mode (NEW!)
 - **Maximum compression without quality loss** - Uses AV1 codec with CRF 18

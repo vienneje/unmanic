@@ -1,3 +1,11 @@
+2.7.12:
+🐛 CRITICAL BUG FIX: Library-specific settings not being applied during encoding
+- FIXED: Worker process now correctly loads library-specific settings
+- Bug: on_worker_process() was creating Settings() without library_id parameter
+- Impact: All libraries were using default settings instead of their configured settings
+- Result: Easy Mode, AV1 Archive, and all custom settings now work correctly
+- Affects: All users with multiple libraries or custom per-library configurations
+
 2.7.11:
 🎬 AV1 ARCHIVE MODE: New quality preset for maximum compression without quality loss
 - NEW: "AV1 Archive" quality option in Easy Mode

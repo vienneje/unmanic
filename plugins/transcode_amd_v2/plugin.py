@@ -1441,7 +1441,7 @@ def on_worker_process(data):
         return data
 
     # Get settings
-    settings_obj = Settings()
+    settings_obj = Settings(library_id=data.get('library_id'))
     settings = get_effective_settings(settings_obj)
 
     # Handle output container format (v2.7.0)
