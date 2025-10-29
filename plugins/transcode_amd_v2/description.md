@@ -371,6 +371,51 @@ Check worker logs to see what hardware is being used!
 
 #### 📈 Version History
 
+**v2.7.10** (2025-10-29) - CROSS-CODEC BITRATE CHECK
+- Fixed: Bitrate check now applies to ALL codecs (H.264, HEVC, AV1)
+- Enhanced: Well-compressed H.264 files are now skipped instead of wastefully re-encoded
+- Example: H.264 at 2.1 Mbps (below HEVC 4.0 Mbps target) won't be re-encoded
+- Logic: Skip if source bitrate ≤ 120% of target codec's optimal bitrate
+- Impact: Eliminates 0% file size reduction transcodes
+
+**v2.7.9** (2025-10-29) - CODEC EFFICIENCY HIERARCHY
+- New: Skip AV1 files when targeting HEVC (AV1 is more efficient)
+- Codec efficiency ranking: AV1 (best) > HEVC > H.264 (least efficient)
+- Prevents wasteful transcoding from better to worse codecs
+- Saves hours of processing time on modern streaming service encodes
+
+**v2.7.8** (2025-10-29) - ENHANCED BITRATE DETECTION
+- Fixed: Bitrate detection with fallback calculation when stream bitrate unavailable
+- Calculates from file size/duration for files without bitrate metadata
+- Ensures bitrate cap applies correctly to all files (remuxes, etc.)
+
+**v2.7.7** (2025-10-28) - PREVENT BLOATED FILES
+- Added: Automatic bitrate cap at 1.5x source bitrate for CRF/VBR modes
+- Fixed: GPU constant quality mode could exceed source bitrate by 2-3x
+- Protects against "Reject File if Larger than Original" failures
+
+**v2.7.6** (2025-10-28) - SKIP EFFICIENT FILES
+- Fixed: is_already_optimal() now correctly uses video-only bitrate
+- Prevents re-encoding well-compressed files that would result in larger output
+- Saves hours of processing time on already-optimized content
+
+**v2.7.5** (2025-10-27) - COMPLETED TASKS FIX
+- Fixed: file_out path not being updated when changing output container
+- All completed transcodes now properly appear in history/stats panels
+
+**v2.7.4** (2025-10-27) - COVER ART FIX V2
+- Fixed: Cover art handling for files with multiple video streams
+- Improved stream mapping logic for complex media files
+
+**v2.7.3** (2025-10-26) - UI BUG FIX
+- Fixed: Duplicate labels in Easy Mode quality selector
+- Improved UI clarity for beginners
+
+**v2.7.2** (2025-10-26) - ENHANCED MODES
+- Improved Easy/Expert mode UI organization
+- Better preset profile descriptions
+- More intuitive configuration options
+
 **v2.7.1** (2025-10-25) - CRITICAL FIX
 - Fixed: Attached pictures (cover art) causing encoding failures
 - Stream mapping now excludes MJPEG cover art
@@ -483,7 +528,7 @@ The plugin automatically:
 ---
 
 **Author**: viennej
-**Version**: 2.7.1
+**Version**: 2.7.10
 **License**: MIT
 **Last Updated**: October 2025
 
