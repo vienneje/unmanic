@@ -617,6 +617,56 @@ def detect_source_codec(file_path):
     return 'h264'
 
 
+def supports_vaapi_decode(file_path):
+    """Check if source codec supports VAAPI hardware decoding
+
+    VAAPI hardware decoding is supported for:
+    - H.264/AVC
+    - H.265/HEVC
+    - AV1
+    - VP8, VP9
+    - MPEG-2
+
+    NOT supported:
+    - MPEG-4 Part 2 (XVID, DivX) - Profile 15 (Advanced Simple Profile)
+    - MPEG-1
+    - VC-1
+    - Older codecs
+    """
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+             '-show_entries', 'stream=codec_name', '-of', 'default=noprint_wrappers=1:nokey=1',
+             file_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            codec = result.stdout.strip().lower()
+
+            # Codecs that support VAAPI hardware decoding
+            supported_codecs = [
+                'h264', 'avc',
+                'hevc', 'h265',
+                'av1',
+                'vp8', 'vp9',
+                'mpeg2video', 'mpeg2'
+            ]
+
+            if codec in supported_codecs:
+                return True
+
+            # MPEG-4 Part 2 (XVID, DivX) does NOT support VAAPI decode
+            if codec in ['mpeg4', 'msmpeg4', 'msmpeg4v2', 'msmpeg4v3']:
+                logger.info(f"Source codec '{codec}' does not support VAAPI hardware decode - using software decode")
+                return False
+
+    except Exception as e:
+        logger.warning(f"Could not detect source codec support: {e}")
+
+    # Default to software decode if unknown
+    return False
+
+
 def detect_video_bit_depth(file_path):
     """Detect video bit depth (8-bit, 10-bit, etc.)"""
     try:
@@ -1551,10 +1601,21 @@ def on_worker_process(data):
     cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'info']
 
     # Hardware acceleration setup (before input)
+    # v2.7.13: Check if source codec supports VAAPI hardware decode
+    use_hwaccel = False
     if encoder.endswith('_vaapi'):
         cmd.extend(['-vaapi_device', gpu_info['render_device']])
-        cmd.extend(['-hwaccel', 'vaapi'])
-        cmd.extend(['-hwaccel_output_format', 'vaapi'])
+
+        if supports_vaapi_decode(file_in):
+            # Full hardware pipeline: decode and encode on GPU
+            cmd.extend(['-hwaccel', 'vaapi'])
+            cmd.extend(['-hwaccel_output_format', 'vaapi'])
+            use_hwaccel = True
+            logger.info("Using hardware decode + encode")
+        else:
+            # Software decode, hardware encode (will use format_vaapi filter)
+            use_hwaccel = False
+            logger.info("Using software decode + hardware encode (unsupported source codec)")
 
     # Test mode - limit duration
     test_duration = settings.get_setting('test_encode_duration')
@@ -1582,6 +1643,11 @@ def on_worker_process(data):
         if crop_filter:
             logger.info(f"Auto-crop enabled: {crop_filter}")
             video_filters.append(crop_filter)
+
+    # v2.7.13: Add format_vaapi filter when using software decode + hardware encode
+    if encoder.endswith('_vaapi') and not use_hwaccel:
+        # Upload frames to GPU for encoding
+        video_filters.append('format=nv12,hwupload')
 
     if video_filters:
         filter_str = ','.join(video_filters)

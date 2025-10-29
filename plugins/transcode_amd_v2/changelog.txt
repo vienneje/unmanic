@@ -1,3 +1,12 @@
+2.7.13:
+🔧 CODEC COMPATIBILITY FIX: Support for MPEG-4/XVID and other legacy codecs
+- FIXED: MPEG-4 Part 2 (XVID, DivX) encoding failures
+- Added: Automatic detection of VAAPI-compatible source codecs
+- Smart fallback: Software decode + hardware encode for unsupported codecs
+- Supported hardware decode: H.264, HEVC, AV1, VP8, VP9, MPEG-2
+- Fallback for: MPEG-4, MPEG-1, VC-1, and other legacy codecs
+- Result: All video files can now be transcoded with AV1/HEVC GPU encoding
+
 2.7.12:
 🐛 CRITICAL BUG FIX: Library-specific settings not being applied during encoding
 - FIXED: Worker process now correctly loads library-specific settings

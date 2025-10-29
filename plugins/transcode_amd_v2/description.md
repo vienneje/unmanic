@@ -29,7 +29,12 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.12)
+## ✨ Latest Features (v2.7.13)
+
+### 🔧 Codec Compatibility Fix (v2.7.13)
+- **FIXED**: MPEG-4/XVID encoding failures with VAAPI
+- **Smart fallback**: Software decode + hardware encode for legacy codecs
+- **Works with**: All video formats including XVID, DivX, VC-1, MPEG-1
 
 ### 🐛 Critical Bug Fix (v2.7.12)
 - **FIXED**: Library-specific settings now correctly applied during encoding
