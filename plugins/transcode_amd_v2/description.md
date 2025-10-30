@@ -29,7 +29,15 @@ Intelligent video transcoding with AMD GPU/CPU hardware acceleration, automatic 
 
 ---
 
-## ✨ Latest Features (v2.7.15)
+## ✨ Latest Features (v2.7.16)
+
+### 🎯 Smart Size Prediction (v2.7.16) - **ENABLED BY DEFAULT**
+- **NEW**: Test encodes 60s first to predict output size
+- **Aborts** if projected savings < 5% (saves hours of wasted time!)
+- **Example**: 1.0GB file → Predicts 1.2GB output → Aborts immediately
+- **Time cost**: 30-60s test vs hours of pointless full encode
+- **Solves**: The "0% reduction" problem permanently
+- **Control**: Can disable in Advanced settings if needed
 
 ### ⚖️ Quality Adjustment (v2.7.15)
 - **IMPROVED**: AV1 Archive CRF changed from 18 to 22 for better compression

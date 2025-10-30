@@ -164,6 +164,7 @@ class Settings(PluginSettings):
         "dry_run": False,
         "test_encode_duration": 0,  # 0 = full file, >0 = test first N seconds
         "skip_10bit_files": False,  # Skip 10-bit sources entirely
+        "enable_size_prediction": True,  # Test encode 60s to predict if worth encoding
     }
 
     form_settings = {
@@ -347,6 +348,10 @@ class Settings(PluginSettings):
         },
         "skip_10bit_files": {
             "label": "Skip 10-bit video files entirely",
+        },
+        "enable_size_prediction": {
+            "label": "Smart Size Prediction (Abort if <5% savings)",
+            "sub_setting": "Test encodes 60s first to predict output size. Aborts encoding if projected savings <5%.",
         },
     }
 
@@ -890,6 +895,82 @@ def get_video_duration(file_path):
         logger.debug(f"Error getting video duration: {e}")
 
     return 0
+
+
+def test_encode_and_predict_size(cmd, file_in, video_duration, test_seconds=60):
+    """
+    Perform a test encode of the first N seconds and predict full output size
+
+    Returns: (should_abort, reason, projected_size, source_size)
+    """
+    try:
+        # Get source file size
+        source_size = os.path.getsize(file_in)
+
+        if video_duration <= 0 or video_duration < test_seconds * 2:
+            # File too short for meaningful test, allow encode
+            return False, None, 0, source_size
+
+        # Build test command (encode first N seconds to /dev/null)
+        test_cmd = cmd.copy()
+
+        # Find output file in command and replace with /dev/null
+        try:
+            output_index = test_cmd.index('-y') + 1
+            original_output = test_cmd[output_index]
+            test_cmd[output_index] = '/tmp/unmanic_test_encode.mkv'
+        except (ValueError, IndexError):
+            return False, "Could not parse command for test", 0, source_size
+
+        # Add test duration limit (before -i input)
+        try:
+            input_index = test_cmd.index('-i')
+            test_cmd.insert(input_index, str(test_seconds))
+            test_cmd.insert(input_index, '-t')
+        except ValueError:
+            return False, "Could not find input in command", 0, source_size
+
+        # Run test encode
+        logger.info(f"Running test encode ({test_seconds}s) to predict output size...")
+        result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=300)
+
+        if result.returncode != 0:
+            logger.warning(f"Test encode failed: {result.stderr[-500:]}")
+            return False, "Test encode failed", 0, source_size
+
+        # Get test output size
+        try:
+            test_size = os.path.getsize('/tmp/unmanic_test_encode.mkv')
+            os.remove('/tmp/unmanic_test_encode.mkv')
+        except Exception as e:
+            logger.warning(f"Could not get test file size: {e}")
+            return False, "Could not measure test output", 0, source_size
+
+        # Calculate bits per second from test
+        test_bps = (test_size * 8) / test_seconds
+
+        # Project full file size
+        projected_size = int((test_bps * video_duration) / 8)
+
+        # Calculate savings
+        savings_bytes = source_size - projected_size
+        savings_percent = (savings_bytes / source_size) * 100
+
+        logger.info(f"Test encode results:")
+        logger.info(f"  Source: {source_size / 1_000_000:.1f} MB")
+        logger.info(f"  Projected: {projected_size / 1_000_000:.1f} MB")
+        logger.info(f"  Savings: {savings_percent:.1f}%")
+
+        # Abort if no meaningful savings (less than 5%)
+        if savings_percent < 5:
+            reason = f"Predicted output ({projected_size / 1_000_000:.1f}MB) would save only {savings_percent:.1f}% vs source ({source_size / 1_000_000:.1f}MB)"
+            return True, reason, projected_size, source_size
+
+        return False, None, projected_size, source_size
+
+    except Exception as e:
+        logger.error(f"Test encode error: {e}")
+        return False, f"Test encode exception: {str(e)}", 0, 0
 
 
 def get_encoder(codec, gpu_info, cpu_info, mode, prefer_amf):
@@ -1841,6 +1922,20 @@ def on_worker_process(data):
         logger.info("=" * 80)
         data['exec_command'] = None
         return data
+
+    # v2.7.16: Smart Size Prediction - Test encode to predict output size
+    if settings.get_setting('enable_size_prediction') and video_duration > 120:
+        should_abort, abort_reason, projected_size, source_size = test_encode_and_predict_size(
+            cmd, file_in, video_duration, test_seconds=60
+        )
+
+        if should_abort:
+            logger.warning("=" * 80)
+            logger.warning("ABORTING ENCODE - Insufficient space savings predicted")
+            logger.warning(abort_reason)
+            logger.warning("=" * 80)
+            data['exec_command'] = None
+            return data
 
     # Set command
     data['exec_command'] = cmd

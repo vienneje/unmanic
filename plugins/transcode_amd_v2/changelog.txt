@@ -1,3 +1,14 @@
+2.7.16:
+🎯 SMART SIZE PREDICTION: Abort encodes with <5% savings (ENABLED BY DEFAULT)
+- NEW: Test encodes 60 seconds to predict full output size
+- ABORTS encoding if projected savings < 5%
+- Saves hours of wasted encoding time on already-compressed files
+- Example: Predicts 1.2GB output from 1.0GB source → Aborts immediately
+- Adds ~30-60s test time but saves hours if encode would be pointless
+- Enabled by default, can be disabled in Advanced settings
+- Only runs on files longer than 2 minutes
+- Solves the "0% reduction" problem permanently!
+
 2.7.15:
 ⚖️ QUALITY ADJUSTMENT: Better compression for AV1 Archive mode
 - CHANGED: AV1 Archive CRF reduced from 18 to 22
